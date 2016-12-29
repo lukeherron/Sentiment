@@ -1,0 +1,52 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'com.github.johnrengelman.shadow' version '1.2.4'
+}
+
+group 'gofish'
+version '1.0-SNAPSHOT'
+
+def mainVerticleName = 'com.gofish.sentiment.CrawlerController'
+def vertxVersion = '3.3.3'
+def junitVersion = '4.12'
+def watchForChange = 'src/**/*'
+def doOnChange = './gradlew classes'
+
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    doOnChange = '.\\gradlew classes'
+}
+
+task wrapper(type: Wrapper) {
+  gradleVersion = '3.2.1'
+  distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+mainClassName = 'io.vertx.core.Launcher'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "io.vertx:vertx-core:$vertxVersion"
+    compile "io.vertx:vertx-hazelcast:$vertxVersion"
+    testCompile "io.vertx:vertx-unit:$vertxVersion"
+    testCompile "junit:junit:$junitVersion"
+}
+
+shadowJar {
+    classifier = 'fat'
+    manifest {
+        attributes 'Main-Verticle': mainVerticleName
+    }
+    mergeServiceFiles {
+        include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+    }
+}
+
+run {
+    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", '--redeploy-termination-period=10000', '--ha']
+}
