@@ -7,7 +7,7 @@ plugins {
 group 'gofish'
 version '1.0-SNAPSHOT'
 
-def mainVerticleName = 'com.gofish.sentiment.CrawlerController'
+def mainVerticleName = 'com.gofish.sentiment.verticle.SentimentVerticle'
 def vertxVersion = '3.3.3'
 def junitVersion = '4.12'
 def watchForChange = 'src/**/*'
@@ -22,8 +22,6 @@ task wrapper(type: Wrapper) {
   distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
 mainClassName = 'io.vertx.core.Launcher'
 
 repositories {
@@ -31,10 +29,44 @@ repositories {
 }
 
 dependencies {
+    compile "io.vertx:vertx-circuit-breaker:$vertxVersion"
     compile "io.vertx:vertx-core:$vertxVersion"
     compile "io.vertx:vertx-hazelcast:$vertxVersion"
+    compile "io.vertx:vertx-mongo-client:$vertxVersion"
+    compile "io.vertx:vertx-rx-java:$vertxVersion"
+    compile "io.vertx:vertx-service-discovery:$vertxVersion"
+    compile "io.vertx:vertx-service-proxy:$vertxVersion"
+
+    compileOnly 'io.vertx:vertx-codegen:3.3.3'
+
     testCompile "io.vertx:vertx-unit:$vertxVersion"
     testCompile "junit:junit:$junitVersion"
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
+task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
+    source = sourceSets.main.java
+    classpath = configurations.compile + configurations.compileOnly
+    destinationDir = project.file('src/main/java')
+    options.compilerArgs = [
+            "-proc:only",
+            "-processor", "io.vertx.codegen.CodeGenProcessor",
+            "-AoutputDirectory=${project.projectDir}/src/main"
+    ]
+}
+
+compileJava {
+    targetCompatibility = 1.8
+    sourceCompatibility = 1.8
+
+    dependsOn annotationProcessing
 }
 
 shadowJar {
