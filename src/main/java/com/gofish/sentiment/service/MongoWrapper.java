@@ -18,7 +18,7 @@ public class MongoWrapper {
     private static final String INDEX_NAME_SUFFIX = "Index";
     private static final Logger logger = LoggerFactory.getLogger(MongoWrapper.class);
 
-    protected final MongoClient mongoClient;
+    private final MongoClient mongoClient;
 
     public MongoWrapper(Vertx vertx, JsonObject config) {
         this.mongoClient = MongoClient.createShared(vertx, config);
