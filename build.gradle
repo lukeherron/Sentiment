@@ -54,7 +54,7 @@ sourceSets {
 task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
     source = sourceSets.main.java
     classpath = configurations.compile + configurations.compileOnly
-    destinationDir = project.file('src/main/java')
+    destinationDir = project.file('src/main/generated')
     options.compilerArgs = [
             "-proc:only",
             "-processor", "io.vertx.codegen.CodeGenProcessor",
@@ -80,5 +80,5 @@ shadowJar {
 }
 
 run {
-    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", '--redeploy-termination-period=10000', '--ha']
+    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", '--redeploy-termination-period=2000', '--ha']
 }

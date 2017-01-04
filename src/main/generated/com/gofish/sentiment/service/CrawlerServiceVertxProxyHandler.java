@@ -16,7 +16,7 @@
 
 package com.gofish.sentiment.service;
 
-import com.gofish.sentiment.service.MongoService;
+import com.gofish.sentiment.service.CrawlerService;
 import io.vertx.core.Vertx;
 import io.vertx.core.Handler;
 import io.vertx.core.AsyncResult;
@@ -40,7 +40,7 @@ import io.vertx.serviceproxy.ProxyHandler;
 import io.vertx.serviceproxy.ServiceException;
 import io.vertx.serviceproxy.ServiceExceptionMessageCodec;
 import io.vertx.core.json.JsonArray;
-import com.gofish.sentiment.service.MongoService;
+import com.gofish.sentiment.service.CrawlerService;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
@@ -51,25 +51,25 @@ import io.vertx.core.Handler;
   @author Roger the Robot
 */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class MongoServiceVertxProxyHandler extends ProxyHandler {
+public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
 
   public static final long DEFAULT_CONNECTION_TIMEOUT = 5 * 60; // 5 minutes 
 
   private final Vertx vertx;
-  private final MongoService service;
+  private final CrawlerService service;
   private final long timerID;
   private long lastAccessed;
   private final long timeoutSeconds;
 
-  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service) {
+  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service) {
     this(vertx, service, DEFAULT_CONNECTION_TIMEOUT);
   }
 
-  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service, long timeoutInSecond) {
+  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service, long timeoutInSecond) {
     this(vertx, service, true, timeoutInSecond);
   }
 
-  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service, boolean topLevel, long timeoutSeconds) {
+  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service, boolean topLevel, long timeoutSeconds) {
     this.vertx = vertx;
     this.service = service;
     this.timeoutSeconds = timeoutSeconds;
@@ -126,24 +126,8 @@ public class MongoServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
-        case "createCollection": {
-          service.createCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
-          break;
-        }
-        case "createIndex": {
-          service.createIndex((java.lang.String)json.getValue("collectionName"), (java.lang.String)json.getValue("indexName"), (io.vertx.core.json.JsonObject)json.getValue("collectionIndex"), createHandler(msg));
-          break;
-        }
-        case "getCollections": {
-          service.getCollections(createHandler(msg));
-          break;
-        }
-        case "hasCollection": {
-          service.hasCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
-          break;
-        }
-        case "saveArticles": {
-          service.saveArticles((java.lang.String)json.getValue("collectionName"), (io.vertx.core.json.JsonArray)json.getValue("articles"), createHandler(msg));
+        case "startCrawl": {
+          service.startCrawl(createHandler(msg));
           break;
         }
         case "close": {

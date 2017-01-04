@@ -1,5 +1,6 @@
 package com.gofish.sentiment.service;
 
+import com.gofish.sentiment.service.impl.MongoServiceImpl;
 import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.ProxyClose;
 import io.vertx.codegen.annotations.ProxyGen;
@@ -28,7 +29,7 @@ public interface MongoService {
     MongoService createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler);
 
     @Fluent
-    MongoService createIndex(String collectionName, String indexName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler);
+    MongoService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler);
 
     @Fluent
     MongoService getCollections(Handler<AsyncResult<JsonArray>> resultHandler);

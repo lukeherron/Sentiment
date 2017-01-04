@@ -1,5 +1,6 @@
-package com.gofish.sentiment.service;
+package com.gofish.sentiment.service.impl;
 
+import com.gofish.sentiment.service.MongoService;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -34,18 +35,22 @@ public class MongoServiceImpl implements MongoService {
                 client.createCollection(collectionName, resultHandler);
             }
             else {
-                resultHandler.handle(null); // Collection already exists, nothing to do...
+                logger.error(handler.cause().getMessage(), handler.cause());
+                resultHandler.handle(Future.failedFuture(handler.cause())); // Collection already exists, nothing to do...
             }
         });
+
+        client.close();
 
         return this;
     }
 
     @Override
-    public MongoService createIndex(String indexName, String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+    public MongoService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+        String indexName = collectionName + "Index";
         isIndexPresent(indexName, collectionName).setHandler(handler -> {
             if (handler.succeeded() && !handler.result()) {
-                IndexOptions indexOptions = new IndexOptions().name(collectionName + "Index").unique(true);
+                IndexOptions indexOptions = new IndexOptions().name(indexName).unique(true);
                 client.createIndexWithOptions(collectionName, collectionIndex, indexOptions, resultHandler);
             }
             else if (handler.failed()) {
@@ -53,6 +58,8 @@ public class MongoServiceImpl implements MongoService {
                 resultHandler.handle(Future.failedFuture(handler.cause()));
             }
         });
+
+        client.close();
 
         return this;
     }

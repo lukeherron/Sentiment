@@ -84,14 +84,13 @@ public class MongoServiceVertxEBProxy implements MongoService {
     return this;
   }
 
-  public MongoService createIndex(String collectionName, String indexName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+  public MongoService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
       return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
-    _json.put("indexName", indexName);
     _json.put("collectionIndex", collectionIndex);
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
     _deliveryOptions.addHeader("action", "createIndex");
