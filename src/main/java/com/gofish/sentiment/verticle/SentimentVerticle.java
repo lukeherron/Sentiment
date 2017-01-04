@@ -1,6 +1,7 @@
 package com.gofish.sentiment.verticle;
 
-import com.gofish.sentiment.service.CrawlerService;
+
+import com.gofish.sentiment.rxjava.service.CrawlerService;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.logging.Logger;
@@ -18,9 +19,7 @@ public class SentimentVerticle extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
-        RxHelper.deployVerticle(vertx, new MongoVerticle())
-                .doOnNext(id -> deployCrawler())
-                .subscribe(this::deployTimedCrawler, startFuture::fail, startFuture::complete);
+        deployCrawler();
     }
 
     private void deployCrawler() {
@@ -31,17 +30,18 @@ public class SentimentVerticle extends AbstractVerticle {
         );
     }
 
-    private void deployTimedCrawler(String deploymentId) {
+    private void deployTimedCrawler() {
         vertx.periodicStream(15000).toObservable().subscribe(
                 result -> deployCrawler(),
-                failure -> logger.error(failure.getMessage(), failure.getCause()),
-                () -> vertx.undeploy(deploymentId));
+                failure -> logger.error(failure.getMessage(), failure.getCause()));
     }
 
     private void startCrawl(String deploymentId) {
         ObservableFuture<JsonArray> crawlerResponseFuture = io.vertx.rx.java.RxHelper.observableFuture();
 
-        CrawlerService crawlerService = CrawlerService.createProxy(getVertx(), CrawlerVerticle.ADDRESS);
+        //CrawlerService crawlerService = CrawlerService.createProxy(getVertx(), CrawlerVerticle.ADDRESS);
+        CrawlerService crawlerService = CrawlerService.createProxy(vertx, CrawlerVerticle.ADDRESS);
+
         crawlerService.startCrawl(crawlerResponseFuture.toHandler());
 
         crawlerResponseFuture.subscribe(

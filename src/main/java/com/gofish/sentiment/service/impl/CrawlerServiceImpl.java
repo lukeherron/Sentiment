@@ -1,12 +1,8 @@
 package com.gofish.sentiment.service.impl;
 
 import com.gofish.sentiment.service.CrawlerService;
-import com.gofish.sentiment.service.MongoService;
-import com.gofish.sentiment.verticle.MongoVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
-import io.vertx.core.Handler;
-import io.vertx.core.Vertx;
+import com.gofish.sentiment.service.MongoWrapper;
+import io.vertx.core.*;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonArray;
@@ -21,7 +17,7 @@ import java.util.stream.Collectors;
 /**
  * @author Luke Herron
  */
-public class CrawlerServiceImpl implements CrawlerService {
+public class CrawlerServiceImpl extends MongoWrapper implements CrawlerService {
 
     private static final String API_KEY = "5b4d7fbf32fd42a58689ff4aee0eaee0";
     private static final String API_BASE_URL = "api.cognitive.microsoft.com";
@@ -30,26 +26,19 @@ public class CrawlerServiceImpl implements CrawlerService {
     private static final Logger logger = LoggerFactory.getLogger(CrawlerServiceImpl.class);
 
     private final Vertx vertx;
-    private final JsonObject config;
 
     public CrawlerServiceImpl(Vertx vertx, JsonObject config) {
+        super(io.vertx.rxjava.core.Vertx.newInstance(vertx), config);
         this.vertx = vertx;
-        this.config = config;
     }
 
     @Override
     public CrawlerService startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) {
-        MongoService mongoService = MongoService.createProxy(vertx, MongoVerticle.ADDRESS);
-        mongoService.getCollections(handler -> {
-            if (handler.succeeded()) {
-                JsonArray queries = handler.result();
-                crawlQueries(queries).setHandler(resultHandler);
-            }
-            else {
-                logger.error(handler.cause().getMessage(), handler.cause());
-                resultHandler.handle(Future.failedFuture(handler.cause()));
-            }
-        });
+        getCollections().subscribe(
+                queries -> crawlQueries(queries).setHandler(resultHandler),
+                logger::error,
+                () -> logger.info("Crawl complete")
+        );
 
         return this;
     }
@@ -63,6 +52,7 @@ public class CrawlerServiceImpl implements CrawlerService {
         Future<JsonArray> allCrawlsCompleteFuture = Future.future();
         List<Future<JsonObject>> crawlQueryFutures = new CopyOnWriteArrayList<>();
         HttpClient client = vertx.createHttpClient(getHttpClientOptions());
+        vertx.createHttpClient(getHttpClientOptions());
         JsonArray crawlResults = new JsonArray();
 
         queries.forEach(q -> {
