@@ -52,14 +52,14 @@ public class CrawlerService {
     return ret;
   }
 
-  public CrawlerService startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) { 
-    delegate.startCrawl(resultHandler);
+  public CrawlerService getQueries(Handler<AsyncResult<JsonArray>> resultHandler) { 
+    delegate.getQueries(resultHandler);
     return this;
   }
 
-  public Observable<JsonArray> startCrawlObservable() { 
+  public Observable<JsonArray> getQueriesObservable() { 
     io.vertx.rx.java.ObservableFuture<JsonArray> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    startCrawl(resultHandler.toHandler());
+    getQueries(resultHandler.toHandler());
     return resultHandler;
   }
 

@@ -126,8 +126,8 @@ public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
-        case "startCrawl": {
-          service.startCrawl(createHandler(msg));
+        case "getQueries": {
+          service.getQueries(createHandler(msg));
           break;
         }
         case "close": {

@@ -28,7 +28,7 @@ public interface CrawlerService {
     }
 
     @Fluent
-    CrawlerService startCrawl(Handler<AsyncResult<JsonArray>> resultHandler);
+    CrawlerService getQueries(Handler<AsyncResult<JsonArray>> resultHandler);
 
     @ProxyClose
     void close();

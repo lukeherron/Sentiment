@@ -37,10 +37,10 @@ var CrawlerService = function(j_val) {
    @param resultHandler {function} 
    @return {CrawlerService}
    */
-  this.startCrawl = function(resultHandler) {
+  this.getQueries = function(resultHandler) {
     var __args = arguments;
     if (__args.length === 1 && typeof __args[0] === 'function') {
-      j_crawlerService["startCrawl(io.vertx.core.Handler)"](function(ar) {
+      j_crawlerService["getQueries(io.vertx.core.Handler)"](function(ar) {
       if (ar.succeeded()) {
         resultHandler(utils.convReturnJson(ar.result()), null);
       } else {

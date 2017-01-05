@@ -80,5 +80,5 @@ shadowJar {
 }
 
 run {
-    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", '--redeploy-termination-period=2000', '--ha']
+    args = ['run', mainVerticleName, "--redeploy=$watchForChange", "--launcher-class=$mainClassName", "--on-redeploy=$doOnChange", '--redeploy-termination-period=2000', '--ha', '--conf src/main/resources/vertx-config.json']
 }

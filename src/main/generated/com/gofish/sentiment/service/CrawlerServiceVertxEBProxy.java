@@ -65,14 +65,14 @@ public class CrawlerServiceVertxEBProxy implements CrawlerService {
     } catch (IllegalStateException ex) {}
   }
 
-  public CrawlerService startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) {
+  public CrawlerService getQueries(Handler<AsyncResult<JsonArray>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
       return this;
     }
     JsonObject _json = new JsonObject();
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
-    _deliveryOptions.addHeader("action", "startCrawl");
+    _deliveryOptions.addHeader("action", "getQueries");
     _vertx.eventBus().<JsonArray>send(_address, _json, _deliveryOptions, res -> {
       if (res.failed()) {
         resultHandler.handle(Future.failedFuture(res.cause()));
