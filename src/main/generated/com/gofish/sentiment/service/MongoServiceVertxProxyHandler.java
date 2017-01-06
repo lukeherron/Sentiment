@@ -16,7 +16,7 @@
 
 package com.gofish.sentiment.service;
 
-import com.gofish.sentiment.service.CrawlerService;
+import com.gofish.sentiment.service.MongoService;
 import io.vertx.core.Vertx;
 import io.vertx.core.Handler;
 import io.vertx.core.AsyncResult;
@@ -40,7 +40,7 @@ import io.vertx.serviceproxy.ProxyHandler;
 import io.vertx.serviceproxy.ServiceException;
 import io.vertx.serviceproxy.ServiceExceptionMessageCodec;
 import io.vertx.core.json.JsonArray;
-import com.gofish.sentiment.service.CrawlerService;
+import com.gofish.sentiment.service.MongoService;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
@@ -51,25 +51,25 @@ import io.vertx.core.Handler;
   @author Roger the Robot
 */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
+public class MongoServiceVertxProxyHandler extends ProxyHandler {
 
   public static final long DEFAULT_CONNECTION_TIMEOUT = 5 * 60; // 5 minutes 
 
   private final Vertx vertx;
-  private final CrawlerService service;
+  private final MongoService service;
   private final long timerID;
   private long lastAccessed;
   private final long timeoutSeconds;
 
-  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service) {
+  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service) {
     this(vertx, service, DEFAULT_CONNECTION_TIMEOUT);
   }
 
-  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service, long timeoutInSecond) {
+  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service, long timeoutInSecond) {
     this(vertx, service, true, timeoutInSecond);
   }
 
-  public CrawlerServiceVertxProxyHandler(Vertx vertx, CrawlerService service, boolean topLevel, long timeoutSeconds) {
+  public MongoServiceVertxProxyHandler(Vertx vertx, MongoService service, boolean topLevel, long timeoutSeconds) {
     this.vertx = vertx;
     this.service = service;
     this.timeoutSeconds = timeoutSeconds;
@@ -98,7 +98,6 @@ public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
   private void checkTimedOut(long id) {
     long now = System.nanoTime();
     if (now - lastAccessed > timeoutSeconds * 1000000000) {
-      service.close();
       close();
     }
   }
@@ -126,13 +125,28 @@ public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
-        case "getQueries": {
-          service.getQueries(createHandler(msg));
+        case "createCollection": {
+          service.createCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;
         }
-        case "close": {
-          service.close();
-          close();
+        case "createIndex": {
+          service.createIndex((java.lang.String)json.getValue("collectionName"), (io.vertx.core.json.JsonObject)json.getValue("collectionIndex"), createHandler(msg));
+          break;
+        }
+        case "getCollections": {
+          service.getCollections(createHandler(msg));
+          break;
+        }
+        case "hasCollection": {
+          service.hasCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
+          break;
+        }
+        case "saveArticles": {
+          service.saveArticles((java.lang.String)json.getValue("collectionName"), (io.vertx.core.json.JsonArray)json.getValue("articles"), createHandler(msg));
+          break;
+        }
+        case "isIndexPresent": {
+          service.isIndexPresent((java.lang.String)json.getValue("indexName"), (java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;
         }
         default: {

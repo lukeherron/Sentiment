@@ -16,7 +16,7 @@
 
 package com.gofish.sentiment.service;
 
-import com.gofish.sentiment.service.CrawlerService;
+import com.gofish.sentiment.service.MongoService;
 import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.Future;
@@ -33,7 +33,7 @@ import io.vertx.serviceproxy.ProxyHelper;
 import io.vertx.serviceproxy.ServiceException;
 import io.vertx.serviceproxy.ServiceExceptionMessageCodec;
 import io.vertx.core.json.JsonArray;
-import com.gofish.sentiment.service.CrawlerService;
+import com.gofish.sentiment.service.MongoService;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
@@ -44,18 +44,18 @@ import io.vertx.core.Handler;
   @author Roger the Robot
 */
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class CrawlerServiceVertxEBProxy implements CrawlerService {
+public class MongoServiceVertxEBProxy implements MongoService {
 
   private Vertx _vertx;
   private String _address;
   private DeliveryOptions _options;
   private boolean closed;
 
-  public CrawlerServiceVertxEBProxy(Vertx vertx, String address) {
+  public MongoServiceVertxEBProxy(Vertx vertx, String address) {
     this(vertx, address, null);
   }
 
-  public CrawlerServiceVertxEBProxy(Vertx vertx, String address, DeliveryOptions options) {
+  public MongoServiceVertxEBProxy(Vertx vertx, String address, DeliveryOptions options) {
     this._vertx = vertx;
     this._address = address;
     this._options = options;
@@ -65,14 +65,51 @@ public class CrawlerServiceVertxEBProxy implements CrawlerService {
     } catch (IllegalStateException ex) {}
   }
 
-  public CrawlerService getQueries(Handler<AsyncResult<JsonArray>> resultHandler) {
+  public void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return this;
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    _json.put("collectionName", collectionName);
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "createCollection");
+    _vertx.eventBus().<Void>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
+  public void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+    if (closed) {
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    _json.put("collectionName", collectionName);
+    _json.put("collectionIndex", collectionIndex);
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "createIndex");
+    _vertx.eventBus().<Void>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
+  public void getCollections(Handler<AsyncResult<JsonArray>> resultHandler) {
+    if (closed) {
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
     }
     JsonObject _json = new JsonObject();
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
-    _deliveryOptions.addHeader("action", "getQueries");
+    _deliveryOptions.addHeader("action", "getCollections");
     _vertx.eventBus().<JsonArray>send(_address, _json, _deliveryOptions, res -> {
       if (res.failed()) {
         resultHandler.handle(Future.failedFuture(res.cause()));
@@ -80,18 +117,62 @@ public class CrawlerServiceVertxEBProxy implements CrawlerService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
-    return this;
   }
 
-  public void close() {
+  public void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
     if (closed) {
-      throw new IllegalStateException("Proxy is closed");
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
     }
-    closed = true;
     JsonObject _json = new JsonObject();
+    _json.put("collectionName", collectionName);
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
-    _deliveryOptions.addHeader("action", "close");
-    _vertx.eventBus().send(_address, _json, _deliveryOptions);
+    _deliveryOptions.addHeader("action", "hasCollection");
+    _vertx.eventBus().<Boolean>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
+  public void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
+    if (closed) {
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    _json.put("collectionName", collectionName);
+    _json.put("articles", articles);
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "saveArticles");
+    _vertx.eventBus().<JsonObject>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
+  public void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
+    if (closed) {
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    _json.put("indexName", indexName);
+    _json.put("collectionName", collectionName);
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "isIndexPresent");
+    _vertx.eventBus().<Boolean>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
   }
 
 
