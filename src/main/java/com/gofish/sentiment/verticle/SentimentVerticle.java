@@ -1,6 +1,7 @@
 package com.gofish.sentiment.verticle;
 
 
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rxjava.core.AbstractVerticle;
@@ -15,19 +16,16 @@ public class SentimentVerticle extends AbstractVerticle {
 
     @Override
     public void start() throws Exception {
-        CrawlerVerticle crawlerVerticle = new CrawlerVerticle();
-        RxHelper.deployVerticle(vertx, crawlerVerticle).subscribe(
-                deploymentId -> logger.debug("Deploying Crawler: " + deploymentId),
-                failure -> logger.error(failure.getMessage(), failure.getCause()),
-                () -> vertx.undeploy(crawlerVerticle.deploymentID())
-        );
+        deployCrawler();
+        vertx.periodicStream(CrawlerVerticle.TIMER_DELAY).toObservable().subscribe(id -> deployCrawler());
+    }
 
-        vertx.periodicStream(CrawlerVerticle.TIMER_DELAY).toObservable().subscribe(id ->
-                RxHelper.deployVerticle(vertx, crawlerVerticle).subscribe(
-                        deploymentId -> logger.debug("Deploying Crawler: " + deploymentId),
-                        failure -> logger.error(failure.getMessage(), failure.getCause()),
-                        () -> vertx.undeploy(crawlerVerticle.deploymentID())
-                )
+    private void deployCrawler() {
+        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config());
+        RxHelper.deployVerticle(vertx, new CrawlerVerticle(), deploymentOptions).subscribe(
+                deploymentId -> vertx.undeploy(deploymentId),
+                failure -> logger.error(failure.getMessage(), failure.getCause()),
+                () -> logger.info("Crawler deployment complete")
         );
     }
 }

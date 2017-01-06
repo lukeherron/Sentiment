@@ -1,8 +1,7 @@
 package com.gofish.sentiment.verticle;
 
-import com.gofish.sentiment.rxjava.service.CrawlerService;
+import com.gofish.sentiment.rxjava.service.MongoService;
 import io.vertx.core.Future;
-import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.http.CaseInsensitiveHeaders;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonArray;
@@ -15,7 +14,6 @@ import io.vertx.rxjava.core.MultiMap;
 import io.vertx.rxjava.core.RxHelper;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientResponse;
-import io.vertx.serviceproxy.ProxyHelper;
 import rx.Observable;
 
 import java.util.List;
@@ -34,8 +32,7 @@ public class CrawlerVerticle extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(CrawlerVerticle.class);
 
     private String apiKey;
-    private CrawlerService crawlerService;
-    private MessageConsumer<JsonObject> consumer;
+    private MongoService mongoService;
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
@@ -45,22 +42,23 @@ public class CrawlerVerticle extends AbstractVerticle {
         // immediately (and probably warn that we need more resources for timely completion)
         // N.B. Vertx timer values must be greater than 0
         // TODO: implement functionality as discussed in above comment, probably simpler to use backpressure
-        apiKey = config().getString("api.key");
-        crawlerService = CrawlerService.create(vertx, config());
-        consumer = ProxyHelper.registerService(com.gofish.sentiment.service.CrawlerService.class, getVertx(), (com.gofish.sentiment.service.CrawlerService) crawlerService.getDelegate(), ADDRESS);
+        apiKey = config().getString("api.key", "");
+        apiKey = "";
 
-        startCrawl().subscribe(
-                result -> logger.debug("Crawl completed"),
-                startFuture::fail,
-                startFuture::complete
-        );
+        RxHelper.deployVerticle(vertx, new MongoVerticle())
+                .doOnNext(result -> mongoService = MongoService.createProxy(vertx, MongoVerticle.ADDRESS))
+                .flatMap(result -> startCrawl())
+                .doOnNext(logger::info)
+                .subscribe(
+                        result -> startFuture.complete(),
+                        startFuture::fail,
+                        () -> logger.info("Crawl completed")
+                );
     }
 
-    private Observable<Void> startCrawl() {
-        return crawlerService.getQueriesObservable()
-                .flatMap(this::crawlQueries)
-                .doOnNext(logger::info)
-                .map(response -> null);
+    private Observable<JsonArray> startCrawl() {
+        return mongoService.getCollectionsObservable()
+                .flatMap(this::crawlQueries);
     }
 
     private Observable<JsonArray> crawlQueries(JsonArray queries) {
@@ -77,11 +75,6 @@ public class CrawlerVerticle extends AbstractVerticle {
         MultiMap headers = new MultiMap(new CaseInsensitiveHeaders().add("Ocp-Apim-Subscription-Key", apiKey));
 
         return RxHelper.get(httpClient, API_PORT, API_BASE_URL, requestUri, headers)
-                .doOnNext(response -> {
-                    int status = response.statusCode();
-                    if (!(status >= 200 && status < 300 || status == 304)) logger.warn(response.statusMessage());
-                })
-                .filter(response -> response.statusCode() >= 200 && response.statusCode() < 300 || response.statusCode() == 304)
                 .flatMap(this::mapFullBufferToObservable)
                 .map(this::parseResponse);
     }
@@ -89,10 +82,17 @@ public class CrawlerVerticle extends AbstractVerticle {
     private Observable<JsonObject> mapFullBufferToObservable(HttpClientResponse response) {
         ObservableFuture<JsonObject> observable = io.vertx.rx.java.RxHelper.observableFuture();
         response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
+
         return observable;
     }
 
     private JsonObject parseResponse(JsonObject response) {
+        if (!response.containsKey("value")) {
+            // We didn't receive the expected results, so don't bother parsing and simply return the response for the
+            // client to inspect.
+            return response;
+        }
+
         JsonObject copy = response.copy(); // We will be changing the structure of the json, so make a copy to change.
         JsonArray articles = copy.getJsonArray("value").copy();
 
@@ -117,28 +117,36 @@ public class CrawlerVerticle extends AbstractVerticle {
         // these articles as well, but we don't want them nested inside other articles. We essentially are going to
         // 'flatten' the clustered articles by removing them as nested objects and placing them as root articles. We
         // start with the intermediary step of extracting them to a seperate JsonArray
-        articles.stream().map(article -> (JsonObject) article).forEach(article -> {
-            if (article.containsKey("clusteredArticles")) {
-                JsonArray clusteredArticles = article.getJsonArray("clusteredArticles");
-                clusteredArticles.forEach(clusteredArticle -> {
-                    JsonArray clusteredArticleAbout = ((JsonObject) clusteredArticle).getJsonArray("about");
-
-                    // Iterate the "about" entries of the parent article and check to see if they exist in the clustered
-                    // article (via filter), if an entry doesn't exist in clustered article, copy it across from parent
-                    article.getJsonArray("about").stream()
-                            .filter(aboutEntry -> !clusteredArticleAbout.contains(aboutEntry))
-                            .forEach(clusteredArticleAbout::add);
-
-                    associatedArticles.add(clusteredArticle);
+        articles.stream().map(article -> (JsonObject) article)
+                .filter(article -> article.containsKey("clusteredArticles"))
+                .forEach(article -> {
+                    // Generally clustered articles don't duplicate the entity context (i.e. "about" section values) of
+                    // the parent article. We don't want to lose this info when we move the clustered article, so we
+                    // ensure that we copy across any missing info first.
+                    preserveEntityContext(associatedArticles, article);
+                    article.remove("clusteredArticles");
                 });
 
-                // The whole point is to flatten out the articles, so we can go ahead and remove the "clusteredArticles"
-                // entry from the json now that we've copied them up into the parent structure
-                article.remove("clusteredArticles");
-            }
-        });
-
         return associatedArticles;
+    }
+
+    private void preserveEntityContext(JsonArray associatedArticles, JsonObject article) {
+        JsonArray clusteredArticles = article.getJsonArray("clusteredArticles");
+        clusteredArticles.forEach(clusteredArticle -> {
+            copyMissingEntities(article, (JsonObject) clusteredArticle);
+            associatedArticles.add(clusteredArticle);
+        });
+    }
+
+    private void copyMissingEntities(JsonObject article, JsonObject clusteredArticle) {
+        JsonArray clusteredArticleAbout = clusteredArticle.getJsonArray("about");
+        JsonArray parentArticleAbout = article.getJsonArray("about");
+
+        // Iterate the "about" entries of the parent article and check to see if they exist in the
+        // clustered article, if an entry doesn't exist in clustered article, copy it across from parent
+        parentArticleAbout.stream()
+                .filter(aboutEntry -> !clusteredArticleAbout.contains(aboutEntry))
+                .forEach(clusteredArticleAbout::add);
     }
 
     private void addMissingContext(JsonObject response, String query) {
@@ -178,7 +186,6 @@ public class CrawlerVerticle extends AbstractVerticle {
 
     @Override
     public void stop() throws Exception {
-        consumer.unregister();
-        //crawlerService.close();
+        //mongoService.close();
     }
 }
