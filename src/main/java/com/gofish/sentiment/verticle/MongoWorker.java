@@ -25,18 +25,17 @@ public class MongoWorker extends AbstractVerticle {
     private MongoClient mongoClient;
     private MessageConsumer<Object> messageConsumer;
 
-
     @Override
     public void start() throws Exception {
-        this.mongoClient = MongoClient.createShared(vertx, config());
-        this.messageConsumer = vertx.eventBus().localConsumer(ADDRESS, this::messageHandler);
+        mongoClient = MongoClient.createShared(vertx, config());
+        messageConsumer = vertx.eventBus().localConsumer(ADDRESS, this::messageHandler);
     }
 
     private void messageHandler(Message<Object> message) {
         String action = message.headers().get("action");
         JsonObject messageBody = (JsonObject) message.body();
 
-        switch(action) {
+        switch (action) {
             case "createCollection":
                 createCollection(messageBody, message);
                 break;
@@ -55,22 +54,24 @@ public class MongoWorker extends AbstractVerticle {
             case "isIndexPresent":
                 isIndexPresent(messageBody, message);
                 break;
+            default:
+                message.reply("Invalid Action");
         }
     }
 
     private void createCollection(JsonObject messageBody, Message<Object> message) {
         final String collectionName = messageBody.getString("collectionName");
 
+        logger.info("Creating collection: " + collectionName);
         hasCollection(collectionName)
                 .filter(isPresent -> {
-                    if (isPresent) return true;
-                    else message.fail(2, "Collection already exists");
-                    return false;
+                    if (isPresent) message.fail(2, "Collection already exists");
+                    return !isPresent;
                 })
                 .flatMap(isPresent -> mongoClient.createCollectionObservable(collectionName))
                 .subscribe(
                         result -> message.reply(result),
-                        failure -> message.fail(1, failure.getMessage() + ": createCollection()"),
+                        failure -> message.fail(1, failure.getMessage()),
                         () -> vertx.undeploy(deploymentID())
                 );
     }
@@ -81,6 +82,7 @@ public class MongoWorker extends AbstractVerticle {
         final JsonObject collectionIndex = messageBody.getJsonObject("collectionIndex");
         final IndexOptions indexOptions = new IndexOptions().name(indexName).unique(true);
 
+        logger.info("Creating index: " + indexName);
         isIndexPresent(indexName, collectionName)
                 .filter(isPresent -> {
                     if (isPresent) return true;
@@ -97,6 +99,7 @@ public class MongoWorker extends AbstractVerticle {
     }
 
     private void getCollections(Message<Object> message) {
+        logger.info("Retrieving collections");
         mongoClient.getCollectionsObservable().map(JsonArray::new).subscribe(
                 collections -> message.reply(collections),
                 failure -> message.fail(1, failure.getMessage()),
@@ -107,6 +110,7 @@ public class MongoWorker extends AbstractVerticle {
     private void hasCollection(JsonObject messageBody, Message message) {
         final String collectionName = messageBody.getString("collectionName");
 
+        logger.info("Checking if collection " + collectionName + " exists");
         hasCollection(collectionName).subscribe(
                 hasCollection -> message.reply(hasCollection),
                 failure -> message.fail(1, failure.getMessage()),
@@ -115,13 +119,14 @@ public class MongoWorker extends AbstractVerticle {
     }
 
     private Observable<Boolean> hasCollection(String collectionName) {
-        return mongoClient.getCollectionsObservable().contains(collectionName);
+        return mongoClient.getCollectionsObservable().map(collections -> collections.contains(collectionName));
     }
 
     private void isIndexPresent(JsonObject messageBody, Message message) {
         final String indexName = messageBody.getString("indexName");
         final String collectionName = messageBody.getString("collectionName");
 
+        logger.info("Checking if index " + indexName + " exists in collection " + collectionName);
         isIndexPresent(indexName, collectionName).subscribe(
                 isPresent -> message.reply(isPresent),
                 failure -> message.fail(1, failure.getMessage() + ":isIndexPresent"),
@@ -130,7 +135,7 @@ public class MongoWorker extends AbstractVerticle {
     }
 
     private Observable<Boolean> isIndexPresent(String indexName, String collectionName) {
-        return mongoClient.listIndexesObservable(collectionName).contains(indexName);
+        return mongoClient.listIndexesObservable(collectionName).map(indexes -> indexes.contains(indexName));
     }
 
     private void saveArticles(JsonObject messageBody, Message<Object> message) {
@@ -142,6 +147,7 @@ public class MongoWorker extends AbstractVerticle {
                 .put("document", articles)
                 .put("ordered", false);
 
+        logger.info("Saving articles to collection " + collectionName);
         mongoClient.runCommandObservable("insert", command).subscribe(
                 result -> message.reply(result),
                 failure -> message.fail(1, failure.getMessage()),

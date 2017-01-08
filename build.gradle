@@ -7,7 +7,7 @@ plugins {
 group 'gofish'
 version '1.0-SNAPSHOT'
 
-def mainVerticleName = 'com.gofish.sentiment.verticle.SentimentVerticle'
+def mainVerticleName = 'com.gofish.sentiment.verticle.APIGatewayVerticle'
 def vertxVersion = '3.3.3'
 def junitVersion = '4.12'
 def watchForChange = 'src/**/*'
@@ -36,6 +36,7 @@ dependencies {
     compile "io.vertx:vertx-rx-java:$vertxVersion"
     compile "io.vertx:vertx-service-discovery:$vertxVersion"
     compile "io.vertx:vertx-service-proxy:$vertxVersion"
+    compile "io.vertx:vertx-web:$vertxVersion"
 
     compileOnly 'io.vertx:vertx-codegen:3.3.3'
 
