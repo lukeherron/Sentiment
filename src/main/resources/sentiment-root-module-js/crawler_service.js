@@ -34,32 +34,56 @@ var CrawlerService = function(j_val) {
   /**
 
    @public
+   @param query {string} 
    @param resultHandler {function} 
-   @return {CrawlerService}
    */
-  this.getQueries = function(resultHandler) {
+  this.addNewQuery = function(query, resultHandler) {
     var __args = arguments;
-    if (__args.length === 1 && typeof __args[0] === 'function') {
-      j_crawlerService["getQueries(io.vertx.core.Handler)"](function(ar) {
+    if (__args.length === 2 && typeof __args[0] === 'string' && typeof __args[1] === 'function') {
+      j_crawlerService["addNewQuery(java.lang.String,io.vertx.core.Handler)"](query, function(ar) {
       if (ar.succeeded()) {
-        resultHandler(utils.convReturnJson(ar.result()), null);
+        resultHandler(null, null);
       } else {
         resultHandler(null, ar.cause());
       }
     });
-      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
   /**
 
    @public
-
+   @param query {string} 
+   @param resultHandler {function} 
    */
-  this.close = function() {
+  this.isQueryActive = function(query, resultHandler) {
     var __args = arguments;
-    if (__args.length === 0) {
-      j_crawlerService["close()"]();
+    if (__args.length === 2 && typeof __args[0] === 'string' && typeof __args[1] === 'function') {
+      j_crawlerService["isQueryActive(java.lang.String,io.vertx.core.Handler)"](query, function(ar) {
+      if (ar.succeeded()) {
+        resultHandler(ar.result(), null);
+      } else {
+        resultHandler(null, ar.cause());
+      }
+    });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+
+   @public
+   @param resultHandler {function} 
+   */
+  this.startCrawl = function(resultHandler) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] === 'function') {
+      j_crawlerService["startCrawl(io.vertx.core.Handler)"](function(ar) {
+      if (ar.succeeded()) {
+        resultHandler(utils.convReturnJson(ar.result()), null);
+      } else {
+        resultHandler(null, ar.cause());
+      }
+    });
     } else throw new TypeError('function invoked with invalid arguments');
   };
 

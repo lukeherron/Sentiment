@@ -16,12 +16,13 @@
 
 package com.gofish.sentiment.rxjava.service;
 
+import java.util.Map;
+import rx.Observable;
+import io.vertx.core.json.JsonArray;
+import io.vertx.rxjava.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.rxjava.core.Vertx;
-import rx.Observable;
 
 /**
  *

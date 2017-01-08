@@ -107,6 +107,7 @@ public class MongoServiceImpl implements MongoService {
     private void getResult(JsonObject message, DeliveryOptions deliveryOptions, Handler<AsyncResult<Message<Object>>> replyHandler) {
         vertx.deployVerticle(new MongoWorker(), workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
+                logger.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
                 eventBus.send(workerAddress, message, deliveryOptions, replyHandler);
             }
             else {
