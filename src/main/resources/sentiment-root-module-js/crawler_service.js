@@ -53,6 +53,24 @@ var CrawlerService = function(j_val) {
   /**
 
    @public
+   @param resultHandler {function} 
+   */
+  this.getQueries = function(resultHandler) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] === 'function') {
+      j_crawlerService["getQueries(io.vertx.core.Handler)"](function(ar) {
+      if (ar.succeeded()) {
+        resultHandler(utils.convReturnJson(ar.result()), null);
+      } else {
+        resultHandler(null, ar.cause());
+      }
+    });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+
+   @public
    @param query {string} 
    @param resultHandler {function} 
    */
@@ -72,12 +90,14 @@ var CrawlerService = function(j_val) {
   /**
 
    @public
+   @param query {string} 
+   @param articles {todo} 
    @param resultHandler {function} 
    */
-  this.startCrawl = function(resultHandler) {
+  this.saveArticles = function(query, articles, resultHandler) {
     var __args = arguments;
-    if (__args.length === 1 && typeof __args[0] === 'function') {
-      j_crawlerService["startCrawl(io.vertx.core.Handler)"](function(ar) {
+    if (__args.length === 3 && typeof __args[0] === 'string' && typeof __args[1] === 'object' && __args[1] instanceof Array && typeof __args[2] === 'function') {
+      j_crawlerService["saveArticles(java.lang.String,io.vertx.core.json.JsonArray,io.vertx.core.Handler)"](query, utils.convParamJsonArray(articles), function(ar) {
       if (ar.succeeded()) {
         resultHandler(utils.convReturnJson(ar.result()), null);
       } else {

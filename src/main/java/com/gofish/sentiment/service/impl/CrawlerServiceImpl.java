@@ -2,16 +2,12 @@ package com.gofish.sentiment.service.impl;
 
 import com.gofish.sentiment.service.CrawlerService;
 import com.gofish.sentiment.service.MongoService;
-import com.gofish.sentiment.verticle.CrawlerWorker;
 import com.gofish.sentiment.verticle.MongoVerticle;
 import io.vertx.core.*;
-import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-
-import java.util.Optional;
 
 /**
  * @author Luke Herron
@@ -25,6 +21,11 @@ public class CrawlerServiceImpl implements CrawlerService {
     private final DeploymentOptions workerOptions;
     private final MongoService mongoService;
 
+    private final JsonObject collectionIndex = new JsonObject()
+            .put("name", 1)
+            .put("datePublished", 1)
+            .put("description", 1);
+
     public CrawlerServiceImpl(Vertx vertx, JsonObject config) {
         this.vertx = vertx;
         this.workerOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(WORKER_INSTANCES);
@@ -33,7 +34,20 @@ public class CrawlerServiceImpl implements CrawlerService {
 
     @Override
     public void addNewQuery(String query, Handler<AsyncResult<Void>> resultHandler) {
-        mongoService.createCollection(query, resultHandler);
+        // To add a new query, we need to create a collection in mongo to store results. We also need to create an
+        // index for the new collection to avoid duplicates.
+        Future<Void> addNewQueryFuture = Future.future();
+        Future<Void> createCollectionFuture = Future.future();
+
+        mongoService.createCollection(query, createCollectionFuture.completer());
+
+        // We'll use Vertx's compose() to ensure that the collection is created before the index
+        createCollectionFuture.compose(v -> {
+            Future<Void> createIndexFuture = Future.future();
+            mongoService.createIndex(query, collectionIndex, createIndexFuture.completer());
+        }, addNewQueryFuture);
+
+        resultHandler.handle(addNewQueryFuture);
     }
 
     @Override
@@ -42,54 +56,13 @@ public class CrawlerServiceImpl implements CrawlerService {
     }
 
     @Override
-    public void startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) {
-        mongoService.getCollections(handler -> {
-            if (handler.succeeded()) {
-                JsonArray queries = handler.result();
-                if (queries.size() < WORKER_INSTANCES) workerOptions.setInstances(queries.size());
-                if (!queries.isEmpty()) crawlQueries(queries, resultHandler);
-            }
-            else {
-                resultHandler.handle(Future.failedFuture(handler.cause()));
-            }
-        });
+    public void saveArticles(String query, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
+        mongoService.saveArticles(query, articles, resultHandler);
     }
 
-    private void crawlQueries(JsonArray queries, Handler<AsyncResult<JsonArray>> resultHandler) {
-        vertx.deployVerticle("com.gofish.sentiment.verticle.CrawlerWorker", workerOptions, completionHandler -> {
-            if (completionHandler.succeeded()) {
-                DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "crawlQuery");
-                JsonArray queryResults = new JsonArray();
-
-                // Send each query to a worker verticle for processing
-                queries.forEach(query -> {
-                    JsonObject message = new JsonObject().put("query", query);
-                    vertx.eventBus().send(CrawlerWorker.ADDRESS, message, deliveryOptions, replyHandler -> {
-                        if (replyHandler.succeeded()) {
-                            JsonObject result = Optional.ofNullable(replyHandler.result().body())
-                                    .map(body -> (JsonObject) body)
-                                    .orElse(new JsonObject().put("failed", "No response returned for query"));
-
-                            queryResults.add(result);
-
-                            // Monitor the number of queries and the number of query results, as this determines when we
-                            // can mark the resultHandler as succeeded
-                            if (queryResults.size() == queries.size()) {
-                                resultHandler.handle(Future.succeededFuture(queryResults));
-                            }
-                        }
-                        else {
-                            logger.error(replyHandler.cause().getMessage(), replyHandler.cause());
-                        }
-                    });
-                });
-            }
-            else {
-                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
-            }
-
-            vertx.undeploy(completionHandler.result());
-        });
+    @Override
+    public void getQueries(Handler<AsyncResult<JsonArray>> resultHandler) {
+        mongoService.getCollections(resultHandler);
     }
 }
 

@@ -78,18 +78,14 @@ public class MongoWorker extends AbstractVerticle {
 
     private void createIndex(JsonObject messageBody, Message<Object> message) {
         final String collectionName = messageBody.getString("collectionName");
-        final String indexName = collectionName + INDEX_NAME_SUFFIX;
+        final String indexName = messageBody.getString("indexName");
         final JsonObject collectionIndex = messageBody.getJsonObject("collectionIndex");
         final IndexOptions indexOptions = new IndexOptions().name(indexName).unique(true);
 
         logger.info("Creating index: " + indexName);
         isIndexPresent(indexName, collectionName)
-                .filter(isPresent -> {
-                    if (isPresent) return true;
-                    else message.fail(2, "Index already exists");
-                    return false;
-                })
-                .flatMap(isPresent ->
+                .flatMap(isPresent -> isPresent ?
+                        Observable.error(new Throwable("Collection already exists")) :
                         mongoClient.createIndexWithOptionsObservable(collectionName, collectionIndex, indexOptions))
                 .subscribe(
                         result -> message.reply(result),
@@ -135,7 +131,8 @@ public class MongoWorker extends AbstractVerticle {
     }
 
     private Observable<Boolean> isIndexPresent(String indexName, String collectionName) {
-        return mongoClient.listIndexesObservable(collectionName).map(indexes -> indexes.contains(indexName));
+        return mongoClient.listIndexesObservable(collectionName)
+                .map(indexes -> indexes.contains(indexName));
     }
 
     private void saveArticles(JsonObject messageBody, Message<Object> message) {
@@ -144,7 +141,7 @@ public class MongoWorker extends AbstractVerticle {
 
         JsonObject command = new JsonObject()
                 .put("insert", collectionName)
-                .put("document", articles)
+                .put("documents", articles)
                 .put("ordered", false);
 
         logger.info("Saving articles to collection " + collectionName);

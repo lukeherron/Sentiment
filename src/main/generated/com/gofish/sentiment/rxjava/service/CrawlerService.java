@@ -16,13 +16,12 @@
 
 package com.gofish.sentiment.rxjava.service;
 
-import java.util.Map;
-import rx.Observable;
-import io.vertx.core.json.JsonArray;
-import io.vertx.rxjava.core.Vertx;
-import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.rxjava.core.Vertx;
+import rx.Observable;
 
 /**
  *
@@ -62,6 +61,16 @@ public class CrawlerService {
     return resultHandler;
   }
 
+  public void getQueries(Handler<AsyncResult<JsonArray>> resultHandler) { 
+    delegate.getQueries(resultHandler);
+  }
+
+  public Observable<JsonArray> getQueriesObservable() { 
+    io.vertx.rx.java.ObservableFuture<JsonArray> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
+    getQueries(resultHandler.toHandler());
+    return resultHandler;
+  }
+
   public void isQueryActive(String query, Handler<AsyncResult<Boolean>> resultHandler) { 
     delegate.isQueryActive(query, resultHandler);
   }
@@ -72,13 +81,13 @@ public class CrawlerService {
     return resultHandler;
   }
 
-  public void startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) { 
-    delegate.startCrawl(resultHandler);
+  public void saveArticles(String query, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) { 
+    delegate.saveArticles(query, articles, resultHandler);
   }
 
-  public Observable<JsonArray> startCrawlObservable() { 
-    io.vertx.rx.java.ObservableFuture<JsonArray> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    startCrawl(resultHandler.toHandler());
+  public Observable<JsonObject> saveArticlesObservable(String query, JsonArray articles) { 
+    io.vertx.rx.java.ObservableFuture<JsonObject> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
+    saveArticles(query, articles, resultHandler.toHandler());
     return resultHandler;
   }
 

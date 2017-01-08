@@ -54,11 +54,11 @@ public class APIGatewayVerticle extends AbstractVerticle {
         });
 
         // Setup a failure handler
-//        router.route("/*").failureHandler(failureHandler -> {
-//            int statusCode = failureHandler.statusCode();
-//            HttpServerResponse response = failureHandler.response();
-//            response.setStatusCode(statusCode).end("Sorry! Not today");
-//        });
+        router.route("/*").failureHandler(failureHandler -> {
+            int statusCode = failureHandler.statusCode();
+            HttpServerResponse response = failureHandler.response();
+            response.setStatusCode(statusCode).end("Sorry! Not today");
+        });
 
         // Launch server and start listening
         vertx.createHttpServer().requestHandler(router::accept).listenObservable().subscribe(

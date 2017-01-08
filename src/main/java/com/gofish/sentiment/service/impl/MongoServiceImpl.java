@@ -25,7 +25,6 @@ import java.util.Map;
  */
 public class MongoServiceImpl implements MongoService {
 
-    private static final String INDEX_NAME_SUFFIX = "Index";
     private static final Logger logger = LoggerFactory.getLogger(MongoServiceImpl.class);
 
     private final EventBus eventBus;
@@ -53,10 +52,9 @@ public class MongoServiceImpl implements MongoService {
 
     @Override
     public void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
-        String indexName = collectionName + INDEX_NAME_SUFFIX;
         JsonObject message = new JsonObject()
                 .put("collectionName", collectionName)
-                .put("indexName", indexName)
+                .put("indexName", collectionName + "Index")
                 .put("collectionIndex", collectionIndex);
 
         getResult(message, deliveryOptions.get("createIndex"), handleReply(resultHandler, Void.class));
@@ -105,7 +103,7 @@ public class MongoServiceImpl implements MongoService {
     }
 
     private void getResult(JsonObject message, DeliveryOptions deliveryOptions, Handler<AsyncResult<Message<Object>>> replyHandler) {
-        vertx.deployVerticle(new MongoWorker(), workerOptions, completionHandler -> {
+        vertx.deployVerticle("com.gofish.sentiment.verticle.MongoWorker", workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 logger.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
                 eventBus.send(workerAddress, message, deliveryOptions, replyHandler);

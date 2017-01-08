@@ -129,12 +129,16 @@ public class CrawlerServiceVertxProxyHandler extends ProxyHandler {
           service.addNewQuery((java.lang.String)json.getValue("query"), createHandler(msg));
           break;
         }
+        case "getQueries": {
+          service.getQueries(createHandler(msg));
+          break;
+        }
         case "isQueryActive": {
           service.isQueryActive((java.lang.String)json.getValue("query"), createHandler(msg));
           break;
         }
-        case "startCrawl": {
-          service.startCrawl(createHandler(msg));
+        case "saveArticles": {
+          service.saveArticles((java.lang.String)json.getValue("query"), (io.vertx.core.json.JsonArray)json.getValue("articles"), createHandler(msg));
           break;
         }
         default: {

@@ -27,7 +27,9 @@ public interface CrawlerService {
 
     void addNewQuery(String query, Handler<AsyncResult<Void>> resultHandler);
 
+    void getQueries(Handler<AsyncResult<JsonArray>> resultHandler);
+
     void isQueryActive(String query, Handler<AsyncResult<Boolean>> resultHandler);
 
-    void startCrawl(Handler<AsyncResult<JsonArray>> resultHandler);
+    void saveArticles(String query, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler);
 }

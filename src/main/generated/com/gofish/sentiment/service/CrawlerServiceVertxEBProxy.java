@@ -83,6 +83,23 @@ public class CrawlerServiceVertxEBProxy implements CrawlerService {
     });
   }
 
+  public void getQueries(Handler<AsyncResult<JsonArray>> resultHandler) {
+    if (closed) {
+      resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "getQueries");
+    _vertx.eventBus().<JsonArray>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        resultHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        resultHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
   public void isQueryActive(String query, Handler<AsyncResult<Boolean>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
@@ -101,15 +118,17 @@ public class CrawlerServiceVertxEBProxy implements CrawlerService {
     });
   }
 
-  public void startCrawl(Handler<AsyncResult<JsonArray>> resultHandler) {
+  public void saveArticles(String query, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
       return;
     }
     JsonObject _json = new JsonObject();
+    _json.put("query", query);
+    _json.put("articles", articles);
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
-    _deliveryOptions.addHeader("action", "startCrawl");
-    _vertx.eventBus().<JsonArray>send(_address, _json, _deliveryOptions, res -> {
+    _deliveryOptions.addHeader("action", "saveArticles");
+    _vertx.eventBus().<JsonObject>send(_address, _json, _deliveryOptions, res -> {
       if (res.failed()) {
         resultHandler.handle(Future.failedFuture(res.cause()));
       } else {
