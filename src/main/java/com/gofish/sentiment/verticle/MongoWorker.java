@@ -19,7 +19,6 @@ import rx.Observable;
 public class MongoWorker extends AbstractVerticle {
 
     public static final String ADDRESS = "sentiment.mongo.worker";
-    private static final String INDEX_NAME_SUFFIX = "Index";
     private static final Logger logger = LoggerFactory.getLogger(MongoWorker.class);
 
     private MongoClient mongoClient;
@@ -29,6 +28,10 @@ public class MongoWorker extends AbstractVerticle {
     public void start() throws Exception {
         mongoClient = MongoClient.createShared(vertx, config());
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, this::messageHandler);
+        messageConsumer.exceptionHandler(exceptionHandler -> {
+            exceptionHandler.printStackTrace();
+            // TODO: decide how to handle receiver exceptions
+        });
     }
 
     private void messageHandler(Message<Object> message) {

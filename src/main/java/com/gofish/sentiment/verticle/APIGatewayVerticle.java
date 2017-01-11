@@ -10,6 +10,7 @@ import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.RxHelper;
 import io.vertx.rxjava.core.http.HttpServerResponse;
 import io.vertx.rxjava.ext.web.Router;
+import io.vertx.rxjava.ext.web.handler.LoggerHandler;
 import rx.Observable;
 
 /**
@@ -37,6 +38,8 @@ public class APIGatewayVerticle extends AbstractVerticle {
         crawlerService = CrawlerService.createProxy(vertx, CrawlerVerticle.ADDRESS);
 
         Router router = Router.router(vertx);
+
+        router.route().handler(LoggerHandler.create());
 
         router.route("/search").blockingHandler(requestHandler -> {
             String q = requestHandler.request().params().get("q");

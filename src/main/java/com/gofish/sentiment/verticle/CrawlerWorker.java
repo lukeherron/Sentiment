@@ -17,10 +17,6 @@ import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientResponse;
 import rx.Single;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 /**
  * @author Luke Herron
  */
@@ -30,14 +26,26 @@ public class CrawlerWorker extends AbstractVerticle {
     private static final Logger logger = LoggerFactory.getLogger(CrawlerWorker.class);
 
     private String apiKey;
+    private String baseUrl;
+    private String urlPath;
+    private int port;
+    private int resultCount;
     private HttpClient httpClient;
     private MessageConsumer<Object> messageConsumer;
 
     @Override
     public void start() throws Exception {
-        apiKey = config().getString("api.key", "");
+        apiKey = config().getString("key", "");
+        baseUrl = config().getString("base.url", "");
+        urlPath = config().getString("url.path", "");
+        port = config().getInteger("port", 443);
+        resultCount = config().getInteger("result.count", 100);
         httpClient = vertx.createHttpClient(getHttpClientOptions());
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, this::messageHandler);
+        messageConsumer.exceptionHandler(exceptionHandler -> {
+            // TODO: decide how to handle receive exceptions
+            exceptionHandler.printStackTrace();
+        });
     }
 
     private void messageHandler(Message<Object> message) {
@@ -55,14 +63,14 @@ public class CrawlerWorker extends AbstractVerticle {
 
     private void crawlQuery(JsonObject messageBody, Message<Object> message) {
         final String query = messageBody.getString("query");
-        final String requestUri = String.join("", CrawlerVerticle.API_URL_PATH, "?q=", query);
+        final String requestUri = String.join("", urlPath, "?q=", query);
         final MultiMap headers = new MultiMap(new CaseInsensitiveHeaders().add("Ocp-Apim-Subscription-Key", apiKey));
 
         logger.info("Crawling query: " + query);
-        RxHelper.get(httpClient, CrawlerVerticle.API_PORT, CrawlerVerticle.API_BASE_URL, requestUri, headers)
+        RxHelper.get(httpClient, port, baseUrl, requestUri, headers)
                 .doOnNext(response -> logger.info(response.statusCode() + ": " + response.statusMessage()))
                 .toSingle()
-                .flatMap(this::mapFullBufferToObservable)
+                .flatMap(this::observableBuffer)
                 .map(this::parseResponse)
                 .subscribe(
                         result -> message.reply(result),
@@ -70,17 +78,7 @@ public class CrawlerWorker extends AbstractVerticle {
                 );
     }
 
-    private Single<JsonObject> crawlQuery(String query, HttpClient httpClient) {
-        String requestUri = String.join("", CrawlerVerticle.API_URL_PATH, "?q=", query);
-        MultiMap headers = new MultiMap(new CaseInsensitiveHeaders().add("Ocp-Apim-Subscription-Key", apiKey));
-
-        return RxHelper.get(httpClient, CrawlerVerticle.API_PORT, CrawlerVerticle.API_BASE_URL, requestUri, headers)
-                .toSingle()
-                .flatMap(this::mapFullBufferToObservable)
-                .map(this::parseResponse);
-    }
-
-    private Single<JsonObject> mapFullBufferToObservable(HttpClientResponse response) {
+    private Single<JsonObject> observableBuffer(HttpClientResponse response) {
         ObservableFuture<JsonObject> observable = io.vertx.rx.java.RxHelper.observableFuture();
         response.bodyHandler(buffer -> {
             observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject()));
@@ -148,39 +146,15 @@ public class CrawlerWorker extends AbstractVerticle {
 
     private void copyMissingEntities(JsonObject article, JsonObject clusteredArticle) {
         // It is possible that neither of our articles contains an about section, so provide an empty json array if they
-        // don't
-        JsonArray clusteredArticleAbout = Optional.ofNullable(clusteredArticle.getJsonArray("about")).orElse(new JsonArray());
-        JsonArray parentArticleAbout = Optional.ofNullable(article.getJsonArray("about")).orElse(new JsonArray());
+        // required
+        JsonArray clusteredArticleAbout = clusteredArticle.getJsonArray("about", new JsonArray());
+        JsonArray parentArticleAbout = article.getJsonArray("about", new JsonArray());
 
         // Iterate the "about" entries of the parent article and check to see if they exist in the
         // clustered article, if an entry doesn't exist in clustered article, copy it across from parent
         parentArticleAbout.stream()
                 .filter(aboutEntry -> !clusteredArticleAbout.contains(aboutEntry))
                 .forEach(clusteredArticleAbout::add);
-    }
-
-    private void addMissingContext(JsonObject response, String query) {
-        // TODO: Save current work to persistence
-        // This step requires hitting another API and waiting for results. We don't want to lose the work we've
-        // done in the event of API issues etc., so make sure we have our current work saved, or implement something
-        // that saves when an error is hit
-        List<JsonObject> noContextArticles = getNoContextArticles(response.getJsonArray("value"), query);
-        noContextArticles.forEach(article -> {
-            // TODO: pass through context linking API once verticle has been coded
-        });
-    }
-
-    private List<JsonObject> getNoContextArticles(JsonArray articles, String query) {
-        return articles.stream()
-                .map(article -> (JsonObject) article)
-                .filter(article -> isWithoutQueryContext(query, article))
-                .collect(Collectors.toList());
-    }
-
-    private boolean isWithoutQueryContext(String query, JsonObject article) {
-        return article.getJsonArray("about").stream()
-                .map(about -> (JsonObject) about)
-                .noneMatch(about -> about.getString("name").toLowerCase().contains(query));
     }
 
     /**

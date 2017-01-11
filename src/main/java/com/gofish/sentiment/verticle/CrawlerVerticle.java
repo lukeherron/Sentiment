@@ -19,31 +19,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CrawlerVerticle extends AbstractVerticle {
 
     static final String ADDRESS = "sentiment.crawler";
-    static final String API_BASE_URL = "api.cognitive.microsoft.com";
-    static final String API_URL_PATH = "/bing/v5.0/news/search";
-    static final int API_PORT = 443;
-    static final int TIMER_DELAY = 3600000;
-    //static final int TIMER_DELAY = 5000;
-    private static final int WORKER_INSTANCES = 2;
     private static final Logger logger = LoggerFactory.getLogger(CrawlerVerticle.class);
 
     private CrawlerService crawlerService;
     private MessageConsumer<JsonObject> consumer;
+    private int workerInstances;
     private DeploymentOptions workerOptions;
 
     @Override
     public void start() throws Exception {
+        JsonObject crawlConfig = Optional.ofNullable(config().getJsonObject("api.news.search"))
+                .orElseThrow(() -> new RuntimeException("Could not load crawler configuration"));
+
         crawlerService = CrawlerService.create(vertx, config());
         consumer = ProxyHelper.registerService(CrawlerService.class, vertx, crawlerService, ADDRESS);
-        workerOptions = new DeploymentOptions().setConfig(config()).setInstances(WORKER_INSTANCES);
-        // We have no idea how long the crawl will take to complete, but we want it to run every TIMER_DELAY interval.
-        // We will need to time how long each crawl takes. If it is less than TIMER_DELAY, then we simply set a timer
-        // for the time remaining. If it is greater than or equal to TIMER_DELAY, then we will want to re-launch
-        // immediately (and probably warn that we need more resources for timely completion)
-        // N.B. Vertx timer values must be greater than 0
-        // TODO: implement functionality as discussed in above comment, probably simpler to use backpressure
+        workerInstances = crawlConfig.getInteger("worker.instances", 2);
+        workerOptions = new DeploymentOptions().setConfig(crawlConfig).setInstances(workerInstances).setWorker(true);
 
-        vertx.setPeriodic(TIMER_DELAY, id -> {
+        int crawlFrequency = crawlConfig.getInteger("crawl.frequency", 3600000);
+        vertx.setPeriodic(crawlFrequency, id -> {
             crawlerService.getQueries(resultHandler -> {
                 if (resultHandler.succeeded()) {
                     JsonArray queries = resultHandler.result();
@@ -58,7 +52,7 @@ public class CrawlerVerticle extends AbstractVerticle {
     }
 
     private void crawlQueries(JsonArray queries) {
-        if (queries.size() < WORKER_INSTANCES) workerOptions.setInstances(queries.size());
+        if (queries.size() < workerInstances) workerOptions.setInstances(queries.size());
 
         vertx.deployVerticle("com.gofish.sentiment.verticle.CrawlerWorker", workerOptions, completionHandler -> {
             AtomicInteger completedQueries = new AtomicInteger(0);
@@ -71,7 +65,7 @@ public class CrawlerVerticle extends AbstractVerticle {
                 }));
             }
             else {
-                completionHandler.cause().printStackTrace();
+                completionHandler.cause().printStackTrace(); // TODO: remove
                 logger.error(completionHandler.cause());
             }
         });
@@ -80,6 +74,7 @@ public class CrawlerVerticle extends AbstractVerticle {
     private void crawlQuery(String query, Handler<AsyncResult<Void>> resultHandler) {
         JsonObject message = new JsonObject().put("query", query);
         DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "crawlQuery");
+
         vertx.eventBus().send(CrawlerWorker.ADDRESS, message, deliveryOptions, replyHandler -> {
             if (replyHandler.succeeded()) {
                 JsonObject result = Optional.ofNullable(replyHandler.result().body())
@@ -91,7 +86,7 @@ public class CrawlerVerticle extends AbstractVerticle {
                 resultHandler.handle(Future.succeededFuture());
             }
             else {
-                replyHandler.cause().printStackTrace();
+                replyHandler.cause().printStackTrace(); // TODO: remove
                 logger.error(replyHandler.cause());
                 resultHandler.handle(Future.failedFuture(replyHandler.cause()));
             }

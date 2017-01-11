@@ -106,7 +106,12 @@ public class MongoServiceImpl implements MongoService {
         vertx.deployVerticle("com.gofish.sentiment.verticle.MongoWorker", workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 logger.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
-                eventBus.send(workerAddress, message, deliveryOptions, replyHandler);
+                eventBus.sender(workerAddress, deliveryOptions)
+                        .send(message, replyHandler)
+                        .exceptionHandler(exceptionHandler -> {
+                            exceptionHandler.printStackTrace();
+                            // TODO: decide how to handler message send exceptions
+                        });
             }
             else {
                 logger.error(completionHandler.cause());

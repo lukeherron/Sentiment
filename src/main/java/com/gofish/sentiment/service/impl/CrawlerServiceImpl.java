@@ -14,21 +14,15 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class CrawlerServiceImpl implements CrawlerService {
 
-    private static final int WORKER_INSTANCES = 2;
     private static final Logger logger = LoggerFactory.getLogger(CrawlerServiceImpl.class);
 
-    private final Vertx vertx;
-    private final DeploymentOptions workerOptions;
     private final MongoService mongoService;
-
     private final JsonObject collectionIndex = new JsonObject()
             .put("name", 1)
             .put("datePublished", 1)
             .put("description", 1);
 
     public CrawlerServiceImpl(Vertx vertx, JsonObject config) {
-        this.vertx = vertx;
-        this.workerOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(WORKER_INSTANCES);
         this.mongoService = MongoService.createProxy(vertx, MongoVerticle.ADDRESS);
     }
 
