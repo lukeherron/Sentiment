@@ -4,6 +4,12 @@ plugins {
 
 group 'gofish'
 version '1.0-SNAPSHOT'
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '3.3'
+    distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
+}
+
 configure (allprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
@@ -53,10 +59,5 @@ configure (allprojects) { project ->
         mergeServiceFiles {
             include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
         }
-    }
-
-    task wrapper(type: Wrapper) {
-        gradleVersion = '3.3'
-        distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
     }
 }
