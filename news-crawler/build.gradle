@@ -1,14 +1,38 @@
 group 'gofish'
 version '1.0-SNAPSHOT'
 
-apply plugin: 'java'
+dependencies {
 
-sourceCompatibility = 1.5
-
-repositories {
-    mavenCentral()
 }
 
-dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.11'
+def mainVerticleName = 'com.gofish.sentiment.newscrawler.NewsCrawlerVerticle'
+def watchForChange = 'src/**/*'
+def doOnChange = './gradlew classes'
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    doOnChange = '.\\gradlew classes'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'io.vertx.core.Launcher'
+        attributes 'Main-Verticle': "$mainVerticleName"
+    }
+}
+
+compileJava {
+    targetCompatibility = 1.8
+    sourceCompatibility = 1.8
+
+    dependsOn annotationProcessing
+}
+
+run {
+    args = [
+            'run', "$mainVerticleName",
+            "--redeploy=$watchForChange",
+            "--launcher-class=$mainClassName",
+            "--on-redeploy=$doOnChange",
+            '-ha',
+            '-conf src/main/resources/vertx-config.json'
+    ]
 }
