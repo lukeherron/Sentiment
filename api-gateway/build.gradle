@@ -1,0 +1,40 @@
+group 'gofish'
+version '1.0-SNAPSHOT'
+
+dependencies {
+    compile (project(':sentiment-service')) { transitive = false }
+    compile "io.vertx:vertx-web:${vertxVersion}"
+}
+
+def mainVerticleName = 'com.gofish.sentiment.api.APIGatewayVerticle'
+def watchForChange = 'src/**/*'
+def doOnChange = './gradlew classes'
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    doOnChange = '.\\gradlew classes'
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'io.vertx.core.Launcher'
+        attributes 'Main-Verticle': "$mainVerticleName"
+    }
+}
+
+compileJava {
+    targetCompatibility = 1.8
+    sourceCompatibility = 1.8
+
+    dependsOn annotationProcessing
+}
+
+run {
+    args = [
+            'run', "$mainVerticleName",
+            "--redeploy=$watchForChange",
+            "--launcher-class=$mainClassName",
+            "--on-redeploy=$doOnChange",
+            '--redeploy-termination-period=2000',
+            '-ha',
+            '-conf src/main/resources/vertx-config.json'
+    ]
+}
