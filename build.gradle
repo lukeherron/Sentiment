@@ -31,7 +31,7 @@ configure (allprojects) { project ->
 
         compileOnly ('io.vertx:vertx-codegen:3.3.3')
 
-        testCompile ("io.vertx:vertx-unit:${vertxVersion}") { exclude module: ':job' }
+        testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")
     }
 

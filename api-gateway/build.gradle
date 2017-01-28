@@ -1,9 +1,6 @@
 group 'gofish'
 version '1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 dependencies {
     compile (project(':sentiment-service')) { transitive = false }
     compile "io.vertx:vertx-web:${vertxVersion}"
