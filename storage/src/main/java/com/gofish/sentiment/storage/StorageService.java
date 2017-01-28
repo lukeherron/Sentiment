@@ -27,17 +27,63 @@ public interface StorageService {
         return ProxyHelper.createProxy(StorageService.class, vertx, address);
     }
 
+    /**
+     * Create a mongo collection using the specified collection name.
+     *
+     * @param collectionName the name of the collection to create
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler);
 
+    /**
+     * Create a mongo index for the specified collection name. This is necessary to avoid adding duplicate documents
+     * to mongo storage. Duplicate documents affect any calculations made against sentiment values.
+     *
+     * @param collectionName the name of the collection that the index will be created for
+     * @param collectionIndex json object mapping the fields that will make up the index
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler);
 
+    /**
+     * Retrieves a list of all current collections in mongo storage
+     *
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void getCollections(Handler<AsyncResult<JsonArray>> resultHandler);
 
+    /**
+     * Retrieves the sentiment results for a specific collection name. A collection name maps to an API query, so any
+     * returned sentiment value will be relevant to the query that is being searched.
+     *
+     * @param collectionName the name of the collection that sentiment results will be retrieved from
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler);
 
+    /**
+     * Checks if the specified collection is currently contained in mongo storage.
+     *
+     * @param collectionName the name of the collection that sentiment results will be retrieved from
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
 
+    /**
+     * Checks if the specified index is already defined for the specified collection name
+     *
+     * @param indexName the name of the index to search for
+     * @param collectionName the name of the collection to search
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
 
+    /**
+     * Stores the provided articles in the specified collection name.
+     *
+     * @param collectionName the name of the collection to store the articles in
+     * @param articles json object containing a list of articles to store
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
     void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler);
 }
