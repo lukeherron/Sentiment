@@ -57,5 +57,5 @@ fabric.properties
 .gradle/
 .idea/
 !/gradle/wrapper/gradle-wrapper.jar
-/src/main/resources/vertx-config.json
 vertx-config.json
+/src/
