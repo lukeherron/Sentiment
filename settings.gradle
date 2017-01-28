@@ -5,4 +5,3 @@ include 'news-crawler'
 include 'news-linker'
 include 'sentiment-service'
 include 'storage'
-
