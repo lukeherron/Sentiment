@@ -112,7 +112,7 @@ public class StorageServiceImpl implements StorageService {
      * @param resultHandler the result will be returned asynchronously in this handler via the replyHandler
      * @param type specifies the result type that the resultHandler will return
 
-     * @return asynchronous message handler which encapsulates the result to be sent back over the eventbus
+     * @return asynchronous message handler which encapsulates the result to be sent back over the event-bus
      */
     private <T> Handler<AsyncResult<Message<Object>>> handleReply(Handler<AsyncResult<T>> resultHandler, Class<T> type) {
         return replyHandler -> {
@@ -127,7 +127,7 @@ public class StorageServiceImpl implements StorageService {
     }
 
     /**
-     * Store the delivery options for each eventbus message we wish to send, so that we are only required to instantiate
+     * Store the delivery options for each event-bus message we wish to send, so that we are only required to instantiate
      * them once at startup, and can easily retrieve them when we wish to send specific message relating to each option
      */
     private void initDeliveryOptionsMap() {
