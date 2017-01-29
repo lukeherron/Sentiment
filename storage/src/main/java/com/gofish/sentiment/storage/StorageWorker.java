@@ -34,8 +34,11 @@ public class StorageWorker extends AbstractVerticle {
      * function to be performed, and the body of the message should be a json object, which contains the message (if any).
      * We utilise this convertion to switch on the 'action' header and perform the related task.
      *
-     * @see <a href="https://github.com/vert-x3/vertx-service-proxy/blob/master/src/main/asciidoc/java/index.adoc#convention-for-invoking-services-over-the-event-bus-without-proxies">event-bus message convention</a>
      * @param message json object which contains both the message header and the message itself
+     *
+     * @see <a href="https://github.com/vert-x3/vertx-service-proxy/blob/master/src/main/asciidoc/java/index.adoc#convention-for-invoking-services-over-the-event-bus-without-proxies">
+     *     event-bus message format convention
+     *     </a>
      */
     private void messageHandler(Message<JsonObject> message) {
         String action = message.headers().get("action");
@@ -226,7 +229,7 @@ public class StorageWorker extends AbstractVerticle {
                 .put("ordered", false);
 
         LOG.info("Saving articles to collection " + collectionName);
-        
+
         mongo.runCommandObservable("insert", command).subscribe(
                 result -> message.reply(result),
                 failure -> message.fail(1, failure.getMessage()),
