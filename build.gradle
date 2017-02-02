@@ -20,6 +20,8 @@ reporting {
     baseDir "reports"
 }
 
+ext { vertxVersion = "3.3.3"; junitVersion = "4.12"; mockitoVersion = "2.+" }
+
 configure (subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
@@ -30,8 +32,6 @@ configure (subprojects) { project ->
     apply plugin: 'org.unbroken-dome.test-sets'
 
     mainClassName = 'io.vertx.core.Launcher'
-
-    ext { vertxVersion = "3.3.3"; junitVersion = "4.12" }
 
     repositories { mavenLocal(); mavenCentral() }
 
@@ -47,6 +47,7 @@ configure (subprojects) { project ->
 
         testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")
+        testCompile ("org.mockito:mockito-core:${mockitoVersion}")
     }
 
     testSets { testIT }
