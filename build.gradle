@@ -10,7 +10,7 @@ task wrapper(type: Wrapper) {
     distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
-configure (allprojects) { project ->
+configure (subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
     apply plugin: 'com.github.johnrengelman.shadow'
