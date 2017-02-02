@@ -56,4 +56,20 @@ public class StorageWorkerTest {
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess());
     }
+
+    @Test
+    public void testCreateCollectionFailsIfCollectionAlreadyExists(TestContext context) {
+        ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
+        createCollectionFuture.toHandler().handle(Future.succeededFuture());
+
+        when(mongo.createCollectionObservable(anyString())).thenReturn(createCollectionFuture);
+
+        when(mongo.getCollectionsObservable())
+                .thenReturn(Observable.just(Collections.singletonList("testCollection")));
+
+        JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
+    }
 }
