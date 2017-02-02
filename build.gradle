@@ -52,25 +52,6 @@ configure (subprojects) { project ->
 
     testSets { testIT }
 
-    test {
-        outputs.upToDateWhen { false }
-        finalizedBy tasks.jacocoTestReport
-        jacoco {
-            append = false
-            destinationFile = new File(project.buildDir, 'jacoco/test.exec')
-        }
-    }
-
-    testIT {
-        outputs.upToDateWhen { false }
-        mustRunAfter test
-        finalizedBy tasks.jacocoTestITReport
-        jacoco {
-            append = false
-            destinationFile = new File(project.buildDir, 'jacoco/testIT.exec')
-        }
-    }
-
     check.dependsOn testIT // Ensure both test and testIT run under check
 
     tasks.withType(FindBugs) {
@@ -116,6 +97,25 @@ configure (subprojects) { project ->
                 "-processor", "io.vertx.codegen.CodeGenProcessor",
                 "-AoutputDirectory=${project.projectDir}/src/main"
         ]
+    }
+
+    test {
+        outputs.upToDateWhen { false }
+        finalizedBy tasks.jacocoTestReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/test.exec')
+        }
+    }
+
+    testIT {
+        outputs.upToDateWhen { false }
+        mustRunAfter test
+        finalizedBy tasks.jacocoTestITReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/testIT.exec')
+        }
     }
 
     shadowJar {
