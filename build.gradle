@@ -1,4 +1,5 @@
 plugins {
+    id 'org.unbroken-dome.test-sets' version '1.3.2'
     id 'com.github.johnrengelman.shadow' version '1.2.4'
 }
 
@@ -14,6 +15,7 @@ configure (subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
     apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: 'org.unbroken-dome.test-sets'
 
     mainClassName = 'io.vertx.core.Launcher'
 
