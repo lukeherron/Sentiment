@@ -95,9 +95,7 @@ public class StorageServiceImpl implements StorageService {
                 LOG.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
                 eventBus.sender(workerAddress, deliveryOptions)
                         .send(message, replyHandler)
-                        .exceptionHandler(cause -> {
-                            replyHandler.handle(Future.failedFuture(cause));
-                        });
+                        .exceptionHandler(cause -> replyHandler.handle(Future.failedFuture(cause)));
             }
             else {
                 replyHandler.handle(Future.failedFuture(completionHandler.cause()));
