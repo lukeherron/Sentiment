@@ -35,14 +35,6 @@ configure (allprojects) { project ->
         testCompile ("junit:junit:${junitVersion}")
     }
 
-    sourceSets {
-        main {
-            java {
-                srcDirs += 'src/main/generated'
-            }
-        }
-    }
-
     task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
         source = sourceSets.main.java
         classpath = configurations.compile + configurations.compileOnly

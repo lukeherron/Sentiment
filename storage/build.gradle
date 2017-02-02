@@ -12,6 +12,14 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
     doOnChange = '.\\gradlew classes'
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'io.vertx.core.Launcher'
