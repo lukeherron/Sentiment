@@ -49,6 +49,63 @@ configure (subprojects) { project ->
         testCompile ("junit:junit:${junitVersion}")
     }
 
+    testSets { testIT }
+
+    test {
+        outputs.upToDateWhen { false }
+        finalizedBy tasks.jacocoTestReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/test.exec')
+        }
+    }
+
+    testIT {
+        outputs.upToDateWhen { false }
+        mustRunAfter test
+        finalizedBy tasks.jacocoTestITReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/testIT.exec')
+        }
+    }
+
+    check.dependsOn testIT // Ensure both test and testIT run under check
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(Pmd) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    task jacocoTestITReport(type: JacocoReport) {
+
+        executionData project.tasks.testIT
+
+        sourceDirectories = project.files(sourceSets.main.allSource.srcDirs)
+        classDirectories = project.sourceSets.main.output
+
+        def reportDir = project.reporting.file("jacoco/testIT/html")
+        reports {
+            html.destination = reportDir
+        }
+    }
+
     task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
         source = sourceSets.main.java
         classpath = configurations.compile + configurations.compileOnly
