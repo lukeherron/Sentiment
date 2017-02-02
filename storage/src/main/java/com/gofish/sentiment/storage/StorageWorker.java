@@ -23,9 +23,17 @@ public class StorageWorker extends AbstractVerticle {
     private MongoClient mongo;
     private MessageConsumer<JsonObject> messageConsumer;
 
+    public StorageWorker() {
+        // Vert-x requires default constructor
+    }
+
+    public StorageWorker(MongoClient mongo) {
+        this.mongo = mongo;
+    }
+
     @Override
     public void start() throws Exception {
-        mongo = MongoClient.createShared(vertx, config());
+        mongo = mongo == null ? MongoClient.createShared(vertx, config()) : mongo;
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, this::messageHandler);
     }
 
