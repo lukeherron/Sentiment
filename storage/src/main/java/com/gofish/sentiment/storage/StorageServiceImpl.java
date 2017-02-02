@@ -90,8 +90,7 @@ public class StorageServiceImpl implements StorageService {
     }
 
     private void getResult(JsonObject message, DeliveryOptions deliveryOptions, Handler<AsyncResult<Message<Object>>> replyHandler) {
-        String workerVerticle = "com.gofish.sentiment.storage.StorageWorker";
-        vertx.deployVerticle(workerVerticle, workerOptions, completionHandler -> {
+        vertx.deployVerticle(StorageWorker.class.getName(), workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 LOG.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
                 eventBus.sender(workerAddress, deliveryOptions)
