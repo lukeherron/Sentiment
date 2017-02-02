@@ -210,7 +210,11 @@ public class StorageWorker extends AbstractVerticle {
      * @return observable which emits the results of the search
      */
     private Observable<Boolean> isIndexPresent(String indexName, String collectionName) {
-        return mongo.listIndexesObservable(collectionName).map(indexes -> indexes.contains(indexName));
+        return mongo.listIndexesObservable(collectionName)
+                .flatMap(Observable::from)
+                .map(index -> ((JsonObject) index).getString("name").equals(indexName))
+                .takeUntil(nameExists -> nameExists)
+                .lastOrDefault(false);
     }
 
     /**
