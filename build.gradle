@@ -11,9 +11,21 @@ task wrapper(type: Wrapper) {
     distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
+apply plugin: 'build-dashboard'
+
+check.mustRunAfter buildDashboard
+check.dependsOn buildDashboard
+
+reporting {
+    baseDir "reports"
+}
+
 configure (subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
+    apply plugin: 'jacoco'
+    apply plugin: 'pmd'
+    apply plugin: 'findbugs'
     apply plugin: 'com.github.johnrengelman.shadow'
     apply plugin: 'org.unbroken-dome.test-sets'
 
