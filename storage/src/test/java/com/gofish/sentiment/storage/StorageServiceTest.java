@@ -116,6 +116,25 @@ public class StorageServiceTest {
                 context.assertEquals("failed test", result.getMessage())));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testHasCollectionSucceeds(TestContext context) {
+        Message<Object> message = mock(Message.class);
+        prepareSuccessScenario(message);
+
+        when(message.body()).thenReturn(true);
+
+        storageService.hasCollection("testCollection", context.asyncAssertSuccess(context::assertTrue));
+    }
+
+    @Test
+    public void testHasCollectionFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.hasCollection("testCollection", context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
+
     private void prepareSuccessScenario(Message<Object> message) {
         Future<Message<Object>> future = Future.succeededFuture(message);
         setMessageResponse(future);
