@@ -67,13 +67,9 @@ jacocoTestITReport {
     }
 }
 
-//startMongoDb.dependsOn stopMongoDb
-//test.dependsOn stopMongoDb
-//testIT.dependsOn startMongoDb
-testIT {
-    doFirst { startMongoDb }
-    doLast { stopMongoDb }
-}
+startMongoDb.dependsOn stopMongoDb
+test.dependsOn stopMongoDb
+testIT.dependsOn startMongoDb
 
 run {
     args = [
