@@ -218,4 +218,19 @@ public class StorageVerticleIT {
             context.assertEquals(3, result.getInteger("n"));
         }));
     }
+
+    @Test
+    public void testStorageServiceFailsSavingInvalidArticle(TestContext context) {
+        storageService.saveArticles("saveInvalidArticleCollection", null, context.asyncAssertFailure());
+        storageService.saveArticles("saveInvalidArticleCollection", new JsonArray(), context.asyncAssertFailure());
+    }
+
+    @Test
+    public void testStorageServiceProxyFailsSavingInvalidArticle(TestContext context) {
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.saveArticles("saveInvalidArticleCollection", null, context.asyncAssertFailure());
+        service.saveArticles("saveInvalidArticleCollection", new JsonArray(), context.asyncAssertFailure());
+    }
 }
