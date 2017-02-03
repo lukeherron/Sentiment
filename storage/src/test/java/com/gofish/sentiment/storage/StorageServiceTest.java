@@ -5,6 +5,7 @@ import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.impl.VertxImpl;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -72,6 +73,26 @@ public class StorageServiceTest {
         prepareFailureScenario();
 
         storageService.createIndex("testCollection", new JsonObject(), context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testGetCollectionsSucceeds(TestContext context) {
+        Message<Object> message = mock(Message.class);
+        prepareSuccessScenario(message);
+
+        when(message.body()).thenReturn(new JsonArray().add(new JsonObject().put("result", "success")));
+
+        storageService.getCollections(context.asyncAssertSuccess(result ->
+                context.assertEquals("success", result.getJsonObject(0).getString("result"))));
+    }
+
+    @Test
+    public void testGetCollectionFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.getCollections(context.asyncAssertFailure(result ->
                 context.assertEquals("failed test", result.getMessage())));
     }
 
