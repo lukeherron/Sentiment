@@ -135,6 +135,26 @@ public class StorageServiceTest {
                 context.assertEquals("failed test", result.getMessage())));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testSaveArticlesSucceeds(TestContext context) {
+        Message<Object> message = mock(Message.class);
+        prepareSuccessScenario(message);
+
+        when(message.body()).thenReturn(new JsonObject().put("result", "success"));
+
+        storageService.saveArticles("testCollection", new JsonArray(), context.asyncAssertSuccess(result ->
+                context.assertEquals("success", result.getString("result"))));
+    }
+
+    @Test
+    public void testSaveArticlesFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.saveArticles("testCollection", new JsonArray(), context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
+
     private void prepareSuccessScenario(Message<Object> message) {
         Future<Message<Object>> future = Future.succeededFuture(message);
         setMessageResponse(future);
