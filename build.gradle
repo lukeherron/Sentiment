@@ -1,4 +1,5 @@
 plugins {
+    id 'org.unbroken-dome.test-sets' version '1.3.2'
     id 'com.github.johnrengelman.shadow' version '1.2.4'
 }
 
@@ -10,14 +11,27 @@ task wrapper(type: Wrapper) {
     distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
-configure (allprojects) { project ->
+apply plugin: 'build-dashboard'
+
+check.mustRunAfter buildDashboard
+check.dependsOn buildDashboard
+
+reporting {
+    baseDir "reports"
+}
+
+ext { vertxVersion = "3.3.3"; junitVersion = "4.12"; mockitoVersion = "2.+" }
+
+configure (subprojects) { project ->
     apply plugin: 'java'
     apply plugin: 'application'
+    apply plugin: 'jacoco'
+    apply plugin: 'pmd'
+    apply plugin: 'findbugs'
     apply plugin: 'com.github.johnrengelman.shadow'
+    apply plugin: 'org.unbroken-dome.test-sets'
 
     mainClassName = 'io.vertx.core.Launcher'
-
-    ext { vertxVersion = "3.3.3"; junitVersion = "4.12" }
 
     repositories { mavenLocal(); mavenCentral() }
 
@@ -33,13 +47,44 @@ configure (allprojects) { project ->
 
         testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")
+        testCompile ("org.mockito:mockito-core:${mockitoVersion}")
     }
 
-    sourceSets {
-        main {
-            java {
-                srcDirs += 'src/main/generated'
-            }
+    testSets { testIT }
+
+    check.dependsOn testIT // Ensure both test and testIT run under check
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(Pmd) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    task jacocoTestITReport(type: JacocoReport) {
+
+        executionData project.tasks.testIT
+
+        sourceDirectories = project.files(sourceSets.main.allSource.srcDirs)
+        classDirectories = project.sourceSets.main.output
+
+        def reportDir = project.reporting.file("jacoco/testIT/html")
+        reports {
+            html.destination = reportDir
         }
     }
 
@@ -52,6 +97,25 @@ configure (allprojects) { project ->
                 "-processor", "io.vertx.codegen.CodeGenProcessor",
                 "-AoutputDirectory=${project.projectDir}/src/main"
         ]
+    }
+
+    test {
+        outputs.upToDateWhen { false }
+        finalizedBy tasks.jacocoTestReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/test.exec')
+        }
+    }
+
+    testIT {
+        outputs.upToDateWhen { false }
+        mustRunAfter test
+        finalizedBy tasks.jacocoTestITReport
+        jacoco {
+            append = false
+            destinationFile = new File(project.buildDir, 'jacoco/testIT.exec')
+        }
     }
 
     shadowJar {
