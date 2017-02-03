@@ -134,4 +134,58 @@ public class StorageVerticleIT {
             service.hasCollection("proxyTest", context.asyncAssertSuccess(context::assertTrue));
         }));
     }
+
+    @Test
+    public void testStorageServiceCanCreateIndex(TestContext context) {
+        final JsonObject collectionIndex = new JsonObject()
+                .put("name", 1)
+                .put("datePublished", 1)
+                .put("description", 1);
+
+        storageService.isIndexPresent(
+                "createIndexTestCollectionIndex",
+                "createIndexTestCollection",
+                context.asyncAssertSuccess(isPresent -> {
+                    context.assertFalse(isPresent); // Index should not yet exist, as it has not yet been created
+                    storageService.createIndex("createIndexTestCollection", collectionIndex, context.asyncAssertSuccess(v -> {
+                        storageService.isIndexPresent(
+                                "createIndexTestCollectionIndex",
+                                "createIndexTestCollection",
+                                context.asyncAssertSuccess(context::assertTrue) // Index should now exist
+                        );
+
+                        storageService.hasCollection("createIndexTestCollection", context.asyncAssertSuccess(context::assertTrue));
+                    }));
+                })
+        );
+    }
+
+    @Test
+    public void testStorageServiceProxyCanCreateIndex(TestContext context) {
+        final JsonObject collectionIndex = new JsonObject()
+                .put("name", 1)
+                .put("datePublished", 1)
+                .put("description", 1);
+
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.isIndexPresent(
+                "proxyCreateIndexTestCollectionIndex",
+                "proxyCreateIndexTestCollection",
+                context.asyncAssertSuccess(isPresent -> {
+                    context.assertFalse(isPresent); // Index should not yet exist, as it has not yet been created
+                    service.createIndex("proxyCreateIndexTestCollection", collectionIndex, context.asyncAssertSuccess(v -> {
+                        service.isIndexPresent(
+                                "proxyCreateIndexTestCollectionIndex",
+                                "proxyCreateIndexTestCollection",
+                                context.asyncAssertSuccess(context::assertTrue) // Index should now exist
+                        );
+
+                        // If a collection does not exist when creating the index, it should be created automatically
+                        service.hasCollection("proxyCreateIndexTestCollection", context.asyncAssertSuccess(context::assertTrue));
+                    }));
+                })
+        );
+    }
 }
