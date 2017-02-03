@@ -192,4 +192,60 @@ public class StorageWorkerTest {
             context.assertFalse(hasCollection);
         }));
     }
+
+    @Test
+    public void testIsIndexPresentRepliesTrueIfIndexExists(TestContext context) {
+        final JsonObject testCollectionIndexMongoOutput = new JsonObject()
+                .put("v", 2)
+                .put("unique", true)
+                .put("key", new JsonObject()
+                        .put("name", 1)
+                        .put("datePublished", 1)
+                        .put("description", 1))
+                .put("name", "testCollectionIndex")
+                .put("ns", "DEFAULT_DB.testCollection");
+
+        when(mongo.listIndexesObservable(anyString()))
+                .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
+
+        JsonObject message = new JsonObject()
+                .put("collectionName", "testCollection")
+                .put("indexName", "testCollectionIndex");
+
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            boolean isIndexPresent = (boolean) result.body();
+            context.assertTrue(isIndexPresent);
+        }));
+    }
+
+    @Test
+    public void testIsIndexPresentRepliesFalseIfIndexDoesNotExist(TestContext context) {
+        final JsonObject testCollectionIndexMongoOutput = new JsonObject()
+                .put("v", 2)
+                .put("unique", true)
+                .put("key", new JsonObject()
+                        .put("name", 1)
+                        .put("datePublished", 1)
+                        .put("description", 1))
+                .put("name", "notTheCollectionYouAreLookingForIndex")
+                .put("ns", "DEFAULT_DB.notTheCollectionYouAreLookingFor");
+
+        when(mongo.listIndexesObservable(anyString()))
+                .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
+
+        JsonObject message = new JsonObject()
+                .put("collectionName", "testCollection")
+                .put("indexName", "testCollectionIndex");
+
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            boolean isIndexPresent = (boolean) result.body();
+            context.assertFalse(isIndexPresent);
+        }));
+    }
 }
