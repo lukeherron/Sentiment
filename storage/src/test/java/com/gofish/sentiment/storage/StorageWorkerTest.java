@@ -164,4 +164,32 @@ public class StorageWorkerTest {
             context.assertTrue(results.size() == 0);
         }));
     }
+
+    @Test
+    public void testHasCollectionRepliesTrueIfCollectionExists(TestContext context) {
+        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
+
+        JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            boolean hasCollection = (boolean) result.body();
+            context.assertTrue(hasCollection);
+        }));
+    }
+
+    @Test
+    public void testHasCollectionRepliesFalseIfCollectionDoesNotExist(TestContext context) {
+        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
+
+        JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            boolean hasCollection = (boolean) result.body();
+            context.assertFalse(hasCollection);
+        }));
+    }
 }
