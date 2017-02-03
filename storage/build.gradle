@@ -67,9 +67,13 @@ jacocoTestITReport {
     }
 }
 
-startMongoDb.dependsOn stopMongoDb
+//startMongoDb.dependsOn stopMongoDb
 //test.dependsOn stopMongoDb
-testIT.dependsOn startMongoDb
+//testIT.dependsOn startMongoDb
+testIT {
+    doFirst { startMongoDb }
+    doLast { stopMongoDb }
+}
 
 run {
     args = [
@@ -81,4 +85,3 @@ run {
             '-conf src/main/resources/vertx-config.json'
     ]
 }
-

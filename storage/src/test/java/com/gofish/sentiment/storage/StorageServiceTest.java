@@ -45,6 +45,13 @@ public class StorageServiceTest {
     }
 
     @Test
+    public void testStorageServiceProxyIsCreated(TestContext context) {
+        StorageService storageService = StorageService.createProxy(vertx, StorageService.ADDRESS);
+
+        context.assertNotNull(storageService);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void testCreateCollectionSucceeds(TestContext context) {
         prepareSuccessScenario(mock(Message.class));
