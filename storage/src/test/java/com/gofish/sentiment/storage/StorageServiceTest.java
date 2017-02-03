@@ -6,10 +6,12 @@ import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.impl.VertxImpl;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.junit.Before;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -39,6 +41,14 @@ public class StorageServiceTest {
         storageService = StorageService.create(vertx, new JsonObject());
 
         when(vertx.eventBus()).thenReturn(mock(EventBus.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testCreateCollectionSucceeds(TestContext context) {
+        prepareSuccessScenario(mock(Message.class));
+
+        storageService.createCollection("testCollection", context.asyncAssertSuccess());
     }
 
     private void prepareSuccessScenario(Message<Object> message) {
