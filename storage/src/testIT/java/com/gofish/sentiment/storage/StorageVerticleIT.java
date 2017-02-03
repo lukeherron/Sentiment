@@ -64,4 +64,21 @@ public class StorageVerticleIT {
         StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
         context.assertNotNull(service);
     }
+
+    @Test
+    public void testStorageServiceCanGetCollections(TestContext context) {
+        storageService.getCollections(context.asyncAssertSuccess(context::assertNotNull));
+
+        storageService.createCollection("oneCollection", context.asyncAssertSuccess(result ->
+                storageService.getCollections(context.asyncAssertSuccess(collections ->
+                        context.assertTrue(collections.size() > 0)))));
+    }
+
+    @Test
+    public void testStorageServiceProxyCanGetCollections(TestContext context) {
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.getCollections(context.asyncAssertSuccess(context::assertNotNull));
+    }
 }
