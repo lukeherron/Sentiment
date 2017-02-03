@@ -22,7 +22,7 @@ public class StorageVerticleTest {
     private StorageVerticle storageVerticle;
 
     @Before
-    public void setUp(TestContext context) {
+    public void setUp() {
         vertx = vertxRule.vertx();
         storageVerticle = new StorageVerticle();
     }
