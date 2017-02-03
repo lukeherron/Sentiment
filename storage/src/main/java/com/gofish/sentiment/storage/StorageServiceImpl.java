@@ -2,7 +2,6 @@ package com.gofish.sentiment.storage;
 
 import io.vertx.core.*;
 import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -20,7 +19,6 @@ public class StorageServiceImpl implements StorageService {
     private static final Logger LOG = LoggerFactory.getLogger(StorageServiceImpl.class);
 
     private final Vertx vertx;
-    private final EventBus eventBus;
     private final String workerAddress;
     private final DeploymentOptions workerOptions;
 
@@ -28,7 +26,6 @@ public class StorageServiceImpl implements StorageService {
 
     public StorageServiceImpl(Vertx vertx, JsonObject config) {
         this.vertx = vertx;
-        this.eventBus = vertx.eventBus();
         this.workerAddress = StorageWorker.ADDRESS;
         this.workerOptions = new DeploymentOptions().setConfig(config).setWorker(true);
 
@@ -93,9 +90,10 @@ public class StorageServiceImpl implements StorageService {
         vertx.deployVerticle(StorageWorker.class.getName(), workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 LOG.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
-                eventBus.sender(workerAddress, deliveryOptions)
-                        .send(message, replyHandler)
-                        .exceptionHandler(cause -> replyHandler.handle(Future.failedFuture(cause)));
+//                eventBus.sender(workerAddress, deliveryOptions)
+//                        .send(message, replyHandler)
+//                        .exceptionHandler(cause -> replyHandler.handle(Future.failedFuture(cause)));
+                vertx.eventBus().send(workerAddress, message, deliveryOptions, replyHandler);
             }
             else {
                 replyHandler.handle(Future.failedFuture(completionHandler.cause()));

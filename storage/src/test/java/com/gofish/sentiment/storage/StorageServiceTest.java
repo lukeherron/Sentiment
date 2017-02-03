@@ -155,6 +155,25 @@ public class StorageServiceTest {
                 context.assertEquals("failed test", result.getMessage())));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testIsIndexPresentSucceeds(TestContext context) {
+        Message<Object> message = mock(Message.class);
+        prepareSuccessScenario(message);
+
+        when(message.body()).thenReturn(true);
+
+        storageService.isIndexPresent("testCollectionIndex", "testCollection", context.asyncAssertSuccess(context::assertTrue));
+    }
+
+    @Test
+    public void testIsIndexPresentFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.isIndexPresent("testCollectionIndex", "testCollection", context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
+
     private void prepareSuccessScenario(Message<Object> message) {
         Future<Message<Object>> future = Future.succeededFuture(message);
         setMessageResponse(future);
