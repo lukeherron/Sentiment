@@ -46,7 +46,7 @@ public class StorageWorkerTest {
         // We want to return a null observable for onnext, without getting hacky with rxjava (i.e. Observable.just(null)
         // on the off-chance that vertx updates to rxjava 2, which doesn't allow null values), so we'll just utilise a
         // void future and RxHelper's handy observableFuture
-        ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
+        final ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
         createCollectionFuture.toHandler().handle(Future.succeededFuture());
 
         when(mongo.createCollectionObservable(anyString())).thenReturn(createCollectionFuture);
@@ -54,15 +54,15 @@ public class StorageWorkerTest {
         when(mongo.getCollectionsObservable())
                 .thenReturn(Observable.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
 
-        JsonObject message = new JsonObject().put("collectionName", "testCollection");
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
+        final JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess());
     }
 
     @Test
     public void testCreateCollectionFailsIfCollectionAlreadyExists(TestContext context) {
-        ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
+        final ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
         createCollectionFuture.toHandler().handle(Future.succeededFuture());
 
         when(mongo.createCollectionObservable(anyString())).thenReturn(createCollectionFuture);
@@ -70,15 +70,15 @@ public class StorageWorkerTest {
         when(mongo.getCollectionsObservable())
                 .thenReturn(Observable.just(Collections.singletonList("testCollection")));
 
-        JsonObject message = new JsonObject().put("collectionName", "testCollection");
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
+        final JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
     }
 
     @Test
     public void testCreateIndexRepliesSuccessWithValidIndexDetails(TestContext context) {
-        ObservableFuture<Void> createIndexFuture = RxHelper.observableFuture();
+        final ObservableFuture<Void> createIndexFuture = RxHelper.observableFuture();
         createIndexFuture.toHandler().handle(Future.succeededFuture());
 
         final JsonObject collectionIndex = new JsonObject()
@@ -91,19 +91,19 @@ public class StorageWorkerTest {
 
         when(mongo.listIndexesObservable(anyString())).thenReturn(Observable.just(new JsonArray()));
 
-        JsonObject message = new JsonObject()
+        final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
                 .put("indexName", "testCollectionIndex")
                 .put("collectionIndex", collectionIndex);
 
-        DeliveryOptions deliverOptions = new DeliveryOptions().addHeader("action", "createIndex");
+        final DeliveryOptions deliverOptions = new DeliveryOptions().addHeader("action", "createIndex");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliverOptions, context.asyncAssertSuccess());
     }
 
     @Test
     public void testCreateIndexFailsWhenIndexAlreadyExists(TestContext context) {
-        ObservableFuture<Void> createIndexFuture = RxHelper.observableFuture();
+        final ObservableFuture<Void> createIndexFuture = RxHelper.observableFuture();
         createIndexFuture.toHandler().handle(Future.succeededFuture());
 
         final JsonObject testCollectionIndex = new JsonObject()
@@ -127,12 +127,12 @@ public class StorageWorkerTest {
         when(mongo.listIndexesObservable(anyString()))
                 .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
-        JsonObject message = new JsonObject()
+        final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
                 .put("indexName", "testCollectionIndex")
                 .put("collectionIndex", testCollectionIndex);
 
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createIndex");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createIndex");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
     }
@@ -141,7 +141,7 @@ public class StorageWorkerTest {
     public void testGetCollectionsRepliesWithJsonArray(TestContext context) {
         when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
 
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getCollections");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getCollections");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, new JsonObject(), deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
@@ -155,8 +155,8 @@ public class StorageWorkerTest {
     public void testGetSentimentResultsRepliesWithJsonObject(TestContext context) {
         when(mongo.findBatchObservable(anyString(), any(JsonObject.class))).thenReturn(Observable.just(new JsonObject()));
 
-        JsonObject message = new JsonObject().put("collectionName", "testCollection");
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getSentimentResults");
+        final JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getSentimentResults");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
@@ -169,8 +169,8 @@ public class StorageWorkerTest {
     public void testHasCollectionRepliesTrueIfCollectionExists(TestContext context) {
         when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
 
-        JsonObject message = new JsonObject().put("collectionName", "testCollection");
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
+        final JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
@@ -183,8 +183,8 @@ public class StorageWorkerTest {
     public void testHasCollectionRepliesFalseIfCollectionDoesNotExist(TestContext context) {
         when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
 
-        JsonObject message = new JsonObject().put("collectionName", "testCollection");
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
+        final JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
@@ -208,11 +208,11 @@ public class StorageWorkerTest {
         when(mongo.listIndexesObservable(anyString()))
                 .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
-        JsonObject message = new JsonObject()
+        final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
                 .put("indexName", "testCollectionIndex");
 
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
@@ -236,16 +236,34 @@ public class StorageWorkerTest {
         when(mongo.listIndexesObservable(anyString()))
                 .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
-        JsonObject message = new JsonObject()
+        final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
                 .put("indexName", "testCollectionIndex");
 
-        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "isIndexPresent");
 
         vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
             boolean isIndexPresent = (boolean) result.body();
             context.assertFalse(isIndexPresent);
+        }));
+    }
+
+    @Test
+    public void testSaveArticlesRepliesSuccessWithJsonObject(TestContext context) {
+        when(mongo.runCommandObservable(anyString(), any(JsonObject.class)))
+                .thenReturn(Observable.just(new JsonObject().put("status", "success")));
+
+        final JsonObject message = new JsonObject()
+                .put("collectionName", "testCollection")
+                .put("articles", new JsonArray());
+
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "saveArticles");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            JsonObject reply = (JsonObject) result.body();
+            context.assertEquals("success", reply.getString("status"));
         }));
     }
 }
