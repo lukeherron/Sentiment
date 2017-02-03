@@ -132,8 +132,22 @@ public class StorageWorkerTest {
                 .put("indexName", "testCollectionIndex")
                 .put("collectionIndex", testCollectionIndex);
 
-        DeliveryOptions deliverOptions = new DeliveryOptions().addHeader("action", "createIndex");
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createIndex");
 
-        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliverOptions, context.asyncAssertFailure());
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
+    }
+
+    @Test
+    public void testGetCollectionsRepliesWithJsonArray(TestContext context) {
+        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
+
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getCollections");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, new JsonObject(), deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            JsonArray collections = (JsonArray) result.body();
+            context.assertTrue(collections.size() > 0);
+            context.assertEquals(collections.getString(0), "testCollection");
+        }));
     }
 }
