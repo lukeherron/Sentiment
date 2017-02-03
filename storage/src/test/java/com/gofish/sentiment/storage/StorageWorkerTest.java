@@ -150,4 +150,18 @@ public class StorageWorkerTest {
             context.assertEquals(collections.getString(0), "testCollection");
         }));
     }
+
+    @Test
+    public void testGetSentimentResultsRepliesWithJsonObject(TestContext context) {
+        when(mongo.findBatchObservable(anyString(), any(JsonObject.class))).thenReturn(Observable.just(new JsonObject()));
+
+        JsonObject message = new JsonObject().put("collectionName", "testCollection");
+        DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getSentimentResults");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, message, deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            JsonObject results = (JsonObject) result.body();
+            context.assertTrue(results.size() == 0);
+        }));
+    }
 }
