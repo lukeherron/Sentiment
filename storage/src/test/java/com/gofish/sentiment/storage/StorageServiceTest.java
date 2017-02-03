@@ -59,6 +59,21 @@ public class StorageServiceTest {
                 context.assertEquals("failed test", result.getMessage())));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testCreateIndexSucceeds(TestContext context) {
+        prepareSuccessScenario(mock(Message.class));
+
+        storageService.createIndex("testCollection", new JsonObject(), context.asyncAssertSuccess());
+    }
+
+    @Test
+    public void testCreateIndexFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.createIndex("testCollection", new JsonObject(), context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
 
     private void prepareSuccessScenario(Message<Object> message) {
         Future<Message<Object>> future = Future.succeededFuture(message);
