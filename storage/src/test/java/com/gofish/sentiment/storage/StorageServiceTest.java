@@ -51,6 +51,15 @@ public class StorageServiceTest {
         storageService.createCollection("testCollection", context.asyncAssertSuccess());
     }
 
+    @Test
+    public void testCreateCollectionFails(TestContext context) {
+        prepareFailureScenario();
+
+        storageService.createCollection("testCollection", context.asyncAssertFailure(result ->
+                context.assertEquals("failed test", result.getMessage())));
+    }
+
+
     private void prepareSuccessScenario(Message<Object> message) {
         Future<Message<Object>> future = Future.succeededFuture(message);
         setMessageResponse(future);
