@@ -233,4 +233,17 @@ public class StorageVerticleIT {
         service.saveArticles("saveInvalidArticleCollection", null, context.asyncAssertFailure());
         service.saveArticles("saveInvalidArticleCollection", new JsonArray(), context.asyncAssertFailure());
     }
+
+    @Test
+    public void testStorageServiceCanGetSentimentResult(TestContext context) {
+        storageService.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(context::assertNull));
+    }
+
+    @Test
+    public void testStorageServiceProxyCanGetSentimentResult(TestContext context) {
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(context::assertNull));
+    }
 }
