@@ -1,6 +1,7 @@
 package com.gofish.sentiment.storage;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.unit.TestContext;
@@ -187,5 +188,34 @@ public class StorageVerticleIT {
                     }));
                 })
         );
+    }
+
+    @Test
+    public void testStorageServiceCanSaveArticles(TestContext context) {
+        final JsonArray articles = new JsonArray()
+                .add(new JsonObject().put("article1", "testArticle"))
+                .add(new JsonObject().put("article2", "testArticle"))
+                .add(new JsonObject().put("article3", "testArticle"));
+
+        storageService.saveArticles("saveArticleCollection", articles, context.asyncAssertSuccess(result -> {
+            context.assertEquals(1, result.getInteger("ok"));
+            context.assertEquals(3, result.getInteger("n"));
+        }));
+    }
+
+    @Test
+    public void testStorageServiceProxyCanSaveArticles(TestContext context) {
+        final JsonArray articles = new JsonArray()
+                .add(new JsonObject().put("article1", "testArticle"))
+                .add(new JsonObject().put("article2", "testArticle"))
+                .add(new JsonObject().put("article3", "testArticle"));
+
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.saveArticles("proxySaveArticleCollection", articles, context.asyncAssertSuccess(result -> {
+            context.assertEquals(1, result.getInteger("ok"));
+            context.assertEquals(3, result.getInteger("n"));
+        }));
     }
 }
