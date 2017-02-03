@@ -53,4 +53,15 @@ public class StorageVerticleIT {
                     serviceDiscoveryStatus + "'. Expected 'DOWN'");
         });
     }
+
+    @Test
+    public void testPublishedStorageServiceNotNull(TestContext context) {
+        context.assertNotNull(storageService);
+    }
+
+    @Test
+    public void testStorageServiceProxyNotNull(TestContext context) {
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+    }
 }
