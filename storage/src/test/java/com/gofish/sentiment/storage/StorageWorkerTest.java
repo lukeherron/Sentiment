@@ -7,11 +7,13 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.IndexOptions;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.ext.mongo.MongoClient;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import rx.Observable;
@@ -29,12 +31,15 @@ import static org.mockito.Mockito.when;
 @RunWith(VertxUnitRunner.class)
 public class StorageWorkerTest {
 
+    @Rule
+    public final RunTestOnContext vertxRule = new RunTestOnContext();
+
     private Vertx vertx;
     private MongoClient mongo;
 
     @Before
     public void setUp(TestContext context) {
-        vertx = Vertx.vertx();
+        vertx = vertxRule.vertx();
         mongo = mock(MongoClient.class);
 
         StorageWorker storageWorker = new StorageWorker(mongo);
@@ -264,6 +269,17 @@ public class StorageWorkerTest {
             context.assertNotNull(result.body());
             JsonObject reply = (JsonObject) result.body();
             context.assertEquals("success", reply.getString("status"));
+        }));
+    }
+
+    @Test
+    public void testMessageHandlerNotifiesOfInvalidAction(TestContext context) {
+        final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "actionThatDoesNotExist");
+
+        vertx.eventBus().send(StorageWorker.ADDRESS, new JsonObject(), deliveryOptions, context.asyncAssertSuccess(result -> {
+            context.assertNotNull(result.body());
+            String reply = result.body().toString();
+            context.assertEquals("Invalid Action", reply);
         }));
     }
 }
