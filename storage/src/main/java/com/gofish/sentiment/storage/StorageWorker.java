@@ -119,7 +119,7 @@ public class StorageWorker extends AbstractVerticle {
 
         isIndexPresent(indexName, collectionName)
                 .flatMap(isPresent -> isPresent ?
-                        Observable.error(new Throwable("Collection already exists")) :
+                        Observable.error(new Throwable("Index already exists")) :
                         mongo.createIndexWithOptionsObservable(collectionName, collectionIndex, indexOptions))
                 .subscribe(
                         result -> message.reply(result),
