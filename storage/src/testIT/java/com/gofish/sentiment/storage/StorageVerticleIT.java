@@ -4,10 +4,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.servicediscovery.ServiceDiscovery;
 import io.vertx.servicediscovery.types.EventBusService;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -17,6 +19,9 @@ import org.junit.runner.RunWith;
 @RunWith(VertxUnitRunner.class)
 public class StorageVerticleIT {
 
+    @Rule
+    public final RunTestOnContext vertxRule = new RunTestOnContext();
+
     private Vertx vertx;
     private ServiceDiscovery serviceDiscovery;
     private StorageService storageService;
@@ -25,7 +30,7 @@ public class StorageVerticleIT {
 
     @Before
     public void setUp(TestContext context) {
-        vertx = Vertx.vertx();
+        vertx = vertxRule.vertx();
         vertx.exceptionHandler(context.exceptionHandler());
         serviceDiscovery = ServiceDiscovery.create(vertx);
 
@@ -105,11 +110,28 @@ public class StorageVerticleIT {
         StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
         context.assertNotNull(service);
 
-        service.hasCollection("proxyCollectionThatDoesNotExist", context.asyncAssertSuccess(context::assertFalse));
+        service.hasCollection("collectionThatDoesNotExist", context.asyncAssertSuccess(context::assertFalse));
         service.hasCollection(null, context.asyncAssertSuccess(context::assertFalse));
 
         service.createCollection("testCollection", context.asyncAssertSuccess(result -> {
             service.hasCollection("testCollection", context.asyncAssertSuccess(context::assertTrue));
+        }));
+    }
+
+    @Test
+    public void testStorageServiceCanCreateCollection(TestContext context) {
+        storageService.createCollection("test", context.asyncAssertSuccess(result -> {
+            storageService.hasCollection("test", context.asyncAssertSuccess(context::assertTrue));
+        }));
+    }
+
+    @Test
+    public void testStorageServiceProxyCanCreateCollection(TestContext context) {
+        StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
+        context.assertNotNull(service);
+
+        service.createCollection("proxyTest", context.asyncAssertSuccess(result -> {
+            service.hasCollection("proxyTest", context.asyncAssertSuccess(context::assertTrue));
         }));
     }
 }
