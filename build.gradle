@@ -55,6 +55,12 @@ configure (subprojects) { project ->
     check.dependsOn testIT // Ensure both test and testIT run under check
 
     tasks.withType(FindBugs) {
+        ignoreFailures = true
+
+        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/${project.name}/rxjava/").path) }
+        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/storage/${project.name.capitalize()}ServiceVertxEBProxy.class").path) }
+        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/storage/${project.name.capitalize()}ServiceVertxProxyHandler.class").path) }
+
         reports {
             xml.enabled = false
             html.enabled = true
@@ -62,29 +68,16 @@ configure (subprojects) { project ->
     }
 
     tasks.withType(Pmd) {
+        ignoreFailures = true
+
+        // Exclude all auto-generated code
+        excludes += "com/gofish/sentiment/${project.name}/rxjava"
+        excludes += '**/*VertxProxyHandler**'
+        excludes += '**/*VertxEBProxy**'
+
         reports {
             xml.enabled = false
             html.enabled = true
-        }
-    }
-
-    tasks.withType(FindBugs) {
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-
-    task jacocoTestITReport(type: JacocoReport) {
-
-        executionData project.tasks.testIT
-
-        sourceDirectories = project.files(sourceSets.main.allSource.srcDirs)
-        classDirectories = project.sourceSets.main.output
-
-        def reportDir = project.reporting.file("jacoco/testIT/html")
-        reports {
-            html.destination = reportDir
         }
     }
 
@@ -97,6 +90,42 @@ configure (subprojects) { project ->
                 "-processor", "io.vertx.codegen.CodeGenProcessor",
                 "-AoutputDirectory=${project.projectDir}/src/main"
         ]
+    }
+
+    task jacocoTestITReport(type: JacocoReport) {
+        executionData project.tasks.testIT
+
+        sourceDirectories = project.files(sourceSets.main.allSource.srcDirs)
+        classDirectories = project.sourceSets.main.output
+
+        def reportDir = project.reporting.file("jacoco/testIT/html")
+        reports {
+            html.destination = reportDir
+        }
+
+        // Exclude all auto-generated code
+        afterEvaluate {
+            classDirectories = files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        "com/gofish/sentiment/${project.name}/rxjava",
+                        '**/*VertxProxyHandler**',
+                        '**/*VertxEBProxy**'
+                ])
+            })
+        }
+    }
+
+    jacocoTestReport {
+        // Exclude all auto-generated code
+        afterEvaluate {
+            classDirectories = files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        "com/gofish/sentiment/${project.name}/rxjava",
+                        '**/*VertxProxyHandler**',
+                        '**/*VertxEBProxy**'
+                ])
+            })
+        }
     }
 
     test {
