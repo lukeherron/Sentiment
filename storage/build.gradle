@@ -42,28 +42,16 @@ mongo {
     logging 'console'
 }
 
-// Exclude any generated classes/code from test coverage
-jacocoTestReport {
-    afterEvaluate {
-        classDirectories = files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    'com/gofish/sentiment/storage/rxjava',
-                    '**/StorageServiceVertxProxyHandler**',
-                    '**/StorageServiceVertxEBProxy**'
-            ])
-        })
+tasks.withType(FindBugs) {
+    classes = classes.filter {
+        !it.path.contains(new File('com/gofish/sentiment/storage/rxjava').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/storage/StorageServiceVertxProxyHandler.class').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/storage/StorageServiceVertxEBProxy.class').path)
     }
-}
 
-jacocoTestITReport {
-    afterEvaluate {
-        classDirectories = files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    'com/gofish/sentiment/storage/rxjava',
-                    '**/StorageServiceVertxProxyHandler**',
-                    '**/StorageServiceVertxEBProxy**'
-            ])
-        })
+    reports {
+        xml.enabled = false
+        html.enabled = true
     }
 }
 

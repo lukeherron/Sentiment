@@ -34,28 +34,23 @@ compileJava {
     dependsOn annotationProcessing
 }
 
-// Exclude any generated classes/code from test coverage
-jacocoTestReport {
-    afterEvaluate {
-        classDirectories = files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    'com/gofish/sentiment/newslinker/rxjava',
-                    '**/NewsLinkerServiceVertxProxyHandler**',
-                    '**/NewsLinkerServiceVertxEBProxy**'
-            ])
-        })
+tasks.withType(FindBugs) {
+    classes = classes.filter {
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/rxjava').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/NewsLinkerServiceVertxProxyHandler.class').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/NewsLinkerServiceVertxEBProxy.class').path)
+    }
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
     }
 }
 
-jacocoTestITReport {
-    afterEvaluate {
-        classDirectories = files(classDirectories.files.collect {
-            fileTree(dir: it, exclude: [
-                    'com/gofish/sentiment/newslinker/rxjava',
-                    '**/NewsLinkerServiceVertxProxyHandler**',
-                    '**/NewsLinkerServiceVertxEBProxy**'
-            ])
-        })
+tasks.withType(Pmd) {
+    reports {
+        xml.enabled = false
+        html.enabled = true
     }
 }
 
