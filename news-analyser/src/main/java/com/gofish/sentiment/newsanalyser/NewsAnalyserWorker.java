@@ -16,7 +16,6 @@ import io.vertx.rxjava.core.http.HttpClientRequest;
 import io.vertx.rxjava.core.http.HttpClientResponse;
 import rx.Observable;
 
-import java.net.HttpRetryException;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -37,6 +36,14 @@ public class NewsAnalyserWorker extends AbstractVerticle {
     private String urlPath;
     private Integer port;
 
+    public NewsAnalyserWorker() {
+        // Vertx requires a default constructor
+    }
+
+    public NewsAnalyserWorker(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
     @Override
     public void start() throws Exception {
         LOG.info("Bringing up News Analyser Worker");
@@ -48,7 +55,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         baseUrl = apiConfig.getString("base.url", "");
         urlPath = apiConfig.getString("url.path", "");
         port = apiConfig.getInteger("port", 443);
-        httpClient = vertx.createHttpClient(getHttpClientOptions());
+        httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             try {
@@ -74,6 +81,8 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                                 failure -> messageHandler.fail(1, failure.getMessage()),
                                 () -> request.end()
                         );
+
+                request.write(requestData.encode());
             }
             catch (Throwable t) {
                 messageHandler.fail(2, "Invalid Request");
