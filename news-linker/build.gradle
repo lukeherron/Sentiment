@@ -47,13 +47,6 @@ tasks.withType(FindBugs) {
     }
 }
 
-tasks.withType(Pmd) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
-    }
-}
-
 run {
     args = [
             'run', "$mainVerticleName",

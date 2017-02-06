@@ -54,33 +54,6 @@ configure (subprojects) { project ->
 
     check.dependsOn testIT // Ensure both test and testIT run under check
 
-    tasks.withType(FindBugs) {
-        ignoreFailures = true
-
-        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/${project.name}/rxjava/").path) }
-        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/storage/${project.name.capitalize()}ServiceVertxEBProxy.class").path) }
-        classes = classes.filter { !it.path.contains(new File("com/gofish/sentiment/storage/${project.name.capitalize()}ServiceVertxProxyHandler.class").path) }
-
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-
-    tasks.withType(Pmd) {
-        ignoreFailures = true
-
-        // Exclude all auto-generated code
-        excludes += "com/gofish/sentiment/${project.name}/rxjava"
-        excludes += '**/*VertxProxyHandler**'
-        excludes += '**/*VertxEBProxy**'
-
-        reports {
-            xml.enabled = false
-            html.enabled = true
-        }
-    }
-
     task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
         source = sourceSets.main.java
         classpath = configurations.compile + configurations.compileOnly
@@ -151,6 +124,44 @@ configure (subprojects) { project ->
         classifier = null
         mergeServiceFiles {
             include 'META-INF/services/io.vertx.core.spi.VerticleFactory'
+        }
+    }
+
+    tasks.withType(Test) {
+        reports {
+            junitXml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(JacocoReport) {
+        afterEvaluate {
+            classDirectories = files(classDirectories.files.collect {
+                fileTree(dir: it, exclude: [
+                        "com/gofish/sentiment/${project.name.replaceAll("-", "")}/rxjava",
+                        '**/**VertxProxyHandler**',
+                        '**/**VertxEBProxy**'
+                ])
+            })
+        }
+
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(Pmd) {
+        ignoreFailures = true
+
+        // Exclude all auto-generated code
+        excludes += "com/gofish/sentiment/${project.name}/rxjava"
+        excludes += '**/*VertxProxyHandler**'
+        excludes += '**/*VertxEBProxy**'
+
+        reports {
+            xml.enabled = false
+            html.enabled = true
         }
     }
 }

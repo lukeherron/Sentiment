@@ -42,6 +42,19 @@ mongo {
     logging 'console'
 }
 
+tasks.withType(FindBugs) {
+    classes = classes.filter {
+        !it.path.contains(new File('com/gofish/sentiment/storage/rxjava').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/storage/StorageServiceVertxProxyHandler.class').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/storage/StorageServiceVertxEBProxy.class').path)
+    }
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
 startMongoDb.dependsOn stopMongoDb
 test.dependsOn stopMongoDb
 testIT.dependsOn startMongoDb
