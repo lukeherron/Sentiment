@@ -43,6 +43,7 @@ public class StorageWorkerTest {
         mongo = mock(MongoClient.class);
 
         StorageWorker storageWorker = new StorageWorker(mongo);
+
         vertx.deployVerticle(storageWorker, context.asyncAssertSuccess());
     }
 
