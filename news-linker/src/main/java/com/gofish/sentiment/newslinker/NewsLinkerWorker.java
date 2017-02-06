@@ -57,28 +57,31 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
-            final JsonObject article = messageHandler.body().getJsonObject("article");
-            final String text = String.join(" ", article.getString("name"), article.getString("description"));
+            try {
+                final JsonObject article = messageHandler.body().getJsonObject("article");
+                final String text = String.join(" ", article.getString("name"), article.getString("description"));
 
-            LOG.info("Calling Entity Linking API");
 
-            HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
-                    .putHeader("Content-Type", "text/plain; charset=UTF-8")
-                    .putHeader("Content-Length", String.valueOf(text.length()))
-                    .putHeader("Ocp-Apim-Subscription-Key", apiKey);
+                LOG.info("Calling Entity Linking API");
 
-            linkNewsArticleEntities(request)
-                    .flatMap(result -> this.addNewEntities(article, result))
-                    .subscribe(
-                            result -> messageHandler.reply(result),
-                            failure -> {
-                                failure.printStackTrace();
-                                messageHandler.fail(1, failure.getMessage());
-                            },
-                            () -> request.end()
-                    );
+                HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
+                        .putHeader("Content-Type", "text/plain; charset=UTF-8")
+                        .putHeader("Content-Length", String.valueOf(text.length()))
+                        .putHeader("Ocp-Apim-Subscription-Key", apiKey);
 
-            request.write(text);
+                linkNewsArticleEntities(request)
+                        .flatMap(result -> this.addNewEntities(article, result))
+                        .subscribe(
+                                result -> messageHandler.reply(result),
+                                failure -> messageHandler.fail(1, failure.getMessage()),
+                                () -> request.end()
+                        );
+
+                request.write(text);
+            }
+            catch (Throwable t) {
+                messageHandler.fail(2, "Invalid Request");
+            }
         });
     }
 
@@ -86,15 +89,17 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         return request.toObservable()
                 .flatMap(this::bodyHandlerObservable)
                 .switchMap(json -> {
-                    switch(json.getInteger("statusCode", 0)) {
-                        case 429:
+                    switch(("" + json.getInteger("statusCode", 0)).charAt(0)) {
+                        case '4':
+                        case '5':
                             return Observable.error(new Throwable(json.getString("message")));
                         default:
                             return Observable.just(json);
                     }
                 })
                 .retryWhen(errors -> errors.flatMap(error -> {
-                    error.printStackTrace();
+                    // This will keep retrying the request until the vertx reply handler times out, at which point the
+                    // request should be re-queued and no longer the responsibility of this worker.
                     int delay = 2;
                     if (error.getMessage().contains("Rate limit is exceeded")) {
                         delay = Integer.parseInt(error.getMessage().replaceAll("[^\\d]", ""));

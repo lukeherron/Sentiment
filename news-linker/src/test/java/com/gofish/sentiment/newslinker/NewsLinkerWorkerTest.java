@@ -3,6 +3,7 @@ package com.gofish.sentiment.newslinker;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -34,12 +35,14 @@ public class NewsLinkerWorkerTest {
     private Vertx vertx;
     private HttpClient httpClient;
     private HttpClientRequest httpClientRequest;
+    private HttpClientResponse httpClientResponse;
 
     @Before
     public void setUp(TestContext context) {
         vertx = vertxRule.vertx();
         httpClient = mock(HttpClient.class);
         httpClientRequest = mock(HttpClientRequest.class);
+        httpClientResponse = mock(HttpClientResponse.class);
 
         NewsLinkerWorker newsLinkerWorker = new NewsLinkerWorker(httpClient);
         DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(new JsonObject().put("api", new JsonObject()));
@@ -48,6 +51,7 @@ public class NewsLinkerWorkerTest {
 
         when(httpClient.request(any(), anyInt(), anyString(), anyString())).thenReturn(httpClientRequest);
         when(httpClientRequest.putHeader(anyString(), anyString())).thenReturn(httpClientRequest);
+        when(httpClientRequest.toObservable()).thenReturn(Observable.just(httpClientResponse));
     }
 
     @Test
@@ -63,14 +67,7 @@ public class NewsLinkerWorkerTest {
                         .add(new JsonObject().put("name", "entity1 test"))
                         .add(new JsonObject().put("name", "entity2 test").put("readLink", "")));
 
-        HttpClientResponse httpClientResponse = mock(HttpClientResponse.class);
-
-        when(httpClientRequest.toObservable()).thenReturn(Observable.just(httpClientResponse));
-        when(httpClientResponse.bodyHandler(any())).thenAnswer(invocation -> {
-            Handler<Buffer> handler = invocation.getArgument(0);
-            handler.handle(Buffer.buffer(entityLinkResponse.encode()));
-            return invocation.getMock();
-        });
+        mockBodyHandler(entityLinkResponse);
 
         vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
             // We should receive a response which is a combination of 'message' and 'entityLinkResponse' in a single
@@ -79,5 +76,66 @@ public class NewsLinkerWorkerTest {
             context.assertNotNull(response);
             context.assertEquals( expectedTestResult.encode(), response.encode());
         }));
+    }
+
+    @Test
+    public void testNewsLinkerReturnsExpectedJsonResultOnFailure(TestContext context) {
+        final JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
+
+        final JsonObject entityLinkResponse = new JsonObject()
+                .put("entities", new JsonArray().add(new JsonObject().put("name", "entity2 test")))
+                .put("statusCode", 429)
+                .put("message", "Rate limit is exceeded: 5");
+
+        mockBodyHandler(entityLinkResponse);
+
+        // Change the reply timeout before sending the message. If we fail to do this, then the default timeout will
+        // be observed (usually 30 seconds), slowing down the unit test considerably
+        DeliveryOptions deliveryOptions = new DeliveryOptions().setSendTimeout(500);
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure(result -> {
+            context.assertEquals("Timed out after waiting " + deliveryOptions.getSendTimeout() + "(ms) for a reply. address: 1", result.getMessage());
+        }));
+    }
+
+    @Test
+    public void testNewsLinkerFailsIfInvalidArticleSupplied(TestContext context) {
+        final JsonObject invalidArticleMessage = new JsonObject().put("invalid", "");
+
+        final JsonObject entityLinkResponse = new JsonObject()
+                .put("entities", new JsonArray().add(new JsonObject().put("name", "entity2 test")))
+                .put("statusCode", 200)
+                .put("message", "Success");
+
+        mockBodyHandler(entityLinkResponse);
+
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, invalidArticleMessage, context.asyncAssertFailure(result -> {
+            context.assertEquals("Invalid Request", result.getMessage());
+        }));
+    }
+
+    @Test
+    public void testNewsLinkerSucceedsWithNoLinkingIfInvalidResponseReceived(TestContext context) {
+        final JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
+
+        final JsonObject invalidEntityLinkResponse = new JsonObject()
+                .put("invalid", new JsonArray().add(new JsonObject().put("alsoInvalid", "entity2 test")));
+
+        mockBodyHandler(invalidEntityLinkResponse);
+
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
+            // As the response did not contain any info that could be linked, we should be receiving back the original
+            // article contained inside the message, with no changes
+            context.assertEquals(message.getJsonObject("article"), result.body());
+        }));
+    }
+
+    private void mockBodyHandler(JsonObject entityLinkResponse) {
+        when(httpClientResponse.bodyHandler(any())).thenAnswer(invocation -> {
+            Handler<Buffer> handler = invocation.getArgument(0);
+            handler.handle(Buffer.buffer(entityLinkResponse.encode()));
+            return invocation.getMock();
+        });
     }
 }
