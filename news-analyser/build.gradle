@@ -37,8 +37,8 @@ compileJava {
 tasks.withType(FindBugs) {
     classes = classes.filter {
         !it.path.contains(new File('com/gofish/sentiment/newsanalyser/rxjava').path) &&
-                !it.path.contains(new File('com/gofish/sentiment/newsanalyser/NewsAnalyserServiceVertxProxyHandler.class').path) &&
-                !it.path.contains(new File('com/gofish/sentiment/newsanalyser/NewsAnalyserServiceVertxEBProxy.class').path)
+        !it.path.contains(new File('com/gofish/sentiment/newsanalyser/NewsAnalyserServiceVertxProxyHandler.class').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/newsanalyser/NewsAnalyserServiceVertxEBProxy.class').path)
     }
 
     reports {
