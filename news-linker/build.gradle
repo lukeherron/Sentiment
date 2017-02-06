@@ -34,6 +34,31 @@ compileJava {
     dependsOn annotationProcessing
 }
 
+// Exclude any generated classes/code from test coverage
+jacocoTestReport {
+    afterEvaluate {
+        classDirectories = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    'com/gofish/news-linker/storage/rxjava',
+                    '**/NewsLinkerServiceVertxProxyHandler**',
+                    '**/NewsLinkerServiceVertxEBProxy**'
+            ])
+        })
+    }
+}
+
+jacocoTestITReport {
+    afterEvaluate {
+        classDirectories = files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    'com/gofish/news-linker/storage/rxjava',
+                    '**/NewsLinkerServiceVertxProxyHandler**',
+                    '**/NewsLinkerServiceVertxEBProxy**'
+            ])
+        })
+    }
+}
+
 run {
     args = [
             'run', "$mainVerticleName",
