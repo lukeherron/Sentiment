@@ -90,6 +90,16 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         });
     }
 
+    @Override
+    public void stop(Future<Void> stopFuture) throws Exception {
+        httpClient.close();
+        messageConsumer.unregisterObservable().subscribe(
+                stopFuture::complete,
+                stopFuture::fail,
+                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
+        );
+    }
+
     private Observable<JsonObject> analyseNewsArticle(HttpClientRequest request) {
         return request.toObservable()
                 .flatMap(this::bodyHandlerObservable)
@@ -141,15 +151,5 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
-    }
-
-    @Override
-    public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
-        );
     }
 }
