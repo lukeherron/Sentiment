@@ -75,6 +75,11 @@ public class NewsCrawlerWorker extends AbstractVerticle {
             final String requestUri = String.join("", urlPath, "?q=", query);
             //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
 
+            // Fail early on easily-discerned failures
+            if (query == null || query.isEmpty()) {
+                messageHandler.fail(1, "Invalid Query");
+            }
+
             LOG.info("Crawling query: " + query);
 
 //            RxHelper.get(httpClient, port, baseUrl, requestUri, headers)
@@ -100,7 +105,8 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 .doOnNext(response -> LOG.info(response.statusCode() + ": " + response.statusMessage()))
                 .flatMap(this::bodyHandlerObservable)
                 .switchMap(json -> {
-                    switch(("" + json.getInteger("statusCode", 0)).charAt(0)) {
+                    JsonObject error = json.getJsonObject("error", new JsonObject());
+                    switch(("" + error.getInteger("statusCode", 0)).charAt(0)) {
                         case '4':
                         case '5':
                             return Observable.error(new Throwable(json.getString("message")));
