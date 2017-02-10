@@ -24,6 +24,9 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     static final String ADDRESS = "sentiment.crawler.worker";
     private static final int DEFAULT_API_PORT = 443;
     private static final int DEFAULT_RESULT_COUNT = 100;
+    private static final int DEFAULT_CRAWL_FREQUENCY = 3600000;
+    private static final int DEFAULT_WORKER_INSTANCES = 8;
+    private static final String DEFAULT_FRESHNESS = "Day";
     private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerWorker.class);
 
     private HttpClient httpClient;
@@ -32,9 +35,13 @@ public class NewsCrawlerWorker extends AbstractVerticle {
 
     private String apiKey;
     private String baseUrl;
+    private String freshness;
     private String urlPath;
+
+    private Integer crawlFrequency;
     private Integer port;
     private Integer resultCount;
+    private Integer workerInstances;
 
     public NewsCrawlerWorker() {
         // Vertx requires a default constructor
@@ -52,9 +59,14 @@ public class NewsCrawlerWorker extends AbstractVerticle {
 
         apiKey = apiConfig.getString("key", "");
         baseUrl = apiConfig.getString("base.url", "");
+        freshness = apiConfig.getString("freshness", DEFAULT_FRESHNESS);
         urlPath = apiConfig.getString("url.path", "");
+
+        crawlFrequency = apiConfig.getInteger("crawl.frequency", DEFAULT_CRAWL_FREQUENCY);
         port = apiConfig.getInteger("port", DEFAULT_API_PORT);
         resultCount = apiConfig.getInteger("result.count", DEFAULT_RESULT_COUNT);
+        workerInstances = apiConfig.getInteger("worker.instances", DEFAULT_WORKER_INSTANCES);
+
         httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
@@ -101,7 +113,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     private HttpClientOptions getHttpClientOptions() {
         return new HttpClientOptions()
                 .setPipelining(true)
-                .setPipeliningLimit(8)
+                .setPipeliningLimit(workerInstances)
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
