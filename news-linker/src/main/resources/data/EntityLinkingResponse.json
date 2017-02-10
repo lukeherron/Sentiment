@@ -1,0 +1,85 @@
+{
+  "entities": [
+    {
+      "matches": [
+        {
+          "text": "Apple",
+          "entries": [
+            {
+              "offset": 0
+            },
+            {
+              "offset": 149
+            }
+          ]
+        }
+      ],
+      "name": "Apple Inc.",
+      "wikipediaId": "Apple Inc.",
+      "score": 1.0
+    },
+    {
+      "matches": [
+        {
+          "text": "iPad",
+          "entries": [
+            {
+              "offset": 41
+            },
+            {
+              "offset": 47
+            }
+          ]
+        }
+      ],
+      "name": "iPad",
+      "wikipediaId": "IPad",
+      "score": 0.714
+    },
+    {
+      "matches": [
+        {
+          "text": "CEO",
+          "entries": [
+            {
+              "offset": 92
+            }
+          ]
+        }
+      ],
+      "name": "Chief Executive Officer",
+      "wikipediaId": "Chief executive officer",
+      "score": 0.989
+    },
+    {
+      "matches": [
+        {
+          "text": "Tim Cook",
+          "entries": [
+            {
+              "offset": 96
+            }
+          ]
+        }
+      ],
+      "name": "Tim Cook",
+      "wikipediaId": "Tim Cook",
+      "score": 1.0
+    },
+    {
+      "matches": [
+        {
+          "text": "iPhone",
+          "entries": [
+            {
+              "offset": 271
+            }
+          ]
+        }
+      ],
+      "name": "iPhone",
+      "wikipediaId": "IPhone",
+      "score": 0.486
+    }
+  ]
+}

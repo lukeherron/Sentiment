@@ -60,7 +60,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             try {
                 final JsonObject article = messageHandler.body().getJsonObject("article");
-                final String analysisText = String.join(" ", article.getString("name"), article.getString("description"));
+                final String analysisText = String.join(". ", article.getString("name"), article.getString("description"));
                 final JsonObject requestData = new JsonObject().put("documents", new JsonArray()
                         .add(new JsonObject()
                                 .put("language", "en")

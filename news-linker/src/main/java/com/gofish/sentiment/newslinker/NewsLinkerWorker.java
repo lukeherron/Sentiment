@@ -59,8 +59,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             try {
                 final JsonObject article = messageHandler.body().getJsonObject("article");
-                final String text = String.join(" ", article.getString("name"), article.getString("description"));
-
+                final String text = String.join(". ", article.getString("name"), article.getString("description"));
 
                 LOG.info("Calling Entity Linking API");
 
