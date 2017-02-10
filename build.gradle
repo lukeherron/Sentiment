@@ -75,30 +75,6 @@ configure (subprojects) { project ->
         reports {
             html.destination = reportDir
         }
-
-        // Exclude all auto-generated code
-        afterEvaluate {
-            classDirectories = files(classDirectories.files.collect {
-                fileTree(dir: it, exclude: [
-                        "com/gofish/sentiment/${project.name}/rxjava",
-                        '**/*VertxProxyHandler**',
-                        '**/*VertxEBProxy**'
-                ])
-            })
-        }
-    }
-
-    jacocoTestReport {
-        // Exclude all auto-generated code
-        afterEvaluate {
-            classDirectories = files(classDirectories.files.collect {
-                fileTree(dir: it, exclude: [
-                        "com/gofish/sentiment/${project.name}/rxjava",
-                        '**/*VertxProxyHandler**',
-                        '**/*VertxEBProxy**'
-                ])
-            })
-        }
     }
 
     test {
@@ -137,11 +113,7 @@ configure (subprojects) { project ->
     tasks.withType(JacocoReport) {
         afterEvaluate {
             classDirectories = files(classDirectories.files.collect {
-                fileTree(dir: it, exclude: [
-                        "com/gofish/sentiment/${project.name.replaceAll("-", "")}/rxjava",
-                        '**/**VertxProxyHandler**',
-                        '**/**VertxEBProxy**'
-                ])
+                fileTree(dir: it, exclude: ['**/rxjava', '**/*VertxProxyHandler*', '**/*VertxEBProxy*'])
             })
         }
 
@@ -155,9 +127,7 @@ configure (subprojects) { project ->
         ignoreFailures = true
 
         // Exclude all auto-generated code
-        excludes += "com/gofish/sentiment/${project.name}/rxjava"
-        excludes += '**/*VertxProxyHandler**'
-        excludes += '**/*VertxEBProxy**'
+        excludes += ['**/rxjava', '**/*VertxProxyHandler**', '**/*VertxEBProxy**']
 
         reports {
             xml.enabled = false
