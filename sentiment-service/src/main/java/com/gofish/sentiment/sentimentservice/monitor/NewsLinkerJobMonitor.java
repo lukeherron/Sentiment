@@ -57,7 +57,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         LOG.info("Starting news linking for job: " + job.getJobId());
 
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
-                .flatMap(service -> getRateLimitedLinkingRequest(job.getNewsSearchResponse(), service))
+                .flatMap(service -> doRateLimitedLinkingRequest(job.getNewsSearchResponse(), service))
                 .subscribe(
                         result -> vertx.eventBus().send("news-linker:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-linker:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
@@ -65,7 +65,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
                 );
     }
 
-    private Observable<JsonObject> getRateLimitedLinkingRequest(JsonObject newsSearchResponse, NewsLinkerService service) {
+    private Observable<JsonObject> doRateLimitedLinkingRequest(JsonObject newsSearchResponse, NewsLinkerService service) {
         Observable<Object> articles = Observable.from(newsSearchResponse.getJsonArray("value"));
         Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
 

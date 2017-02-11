@@ -58,7 +58,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         LOG.info("Starting news analysis for job: " + job.getJobId());
 
         EventBusService.<NewsAnalyserService>getProxyObservable(serviceDiscovery, NewsAnalyserService.class.getName())
-                .flatMap(service -> getRateLimitedAnalyserRequest(job.getNewsSearchResponse(), service))
+                .flatMap(service -> doRateLimitedAnalyserRequest(job.getNewsSearchResponse(), service))
                 .subscribe(
                         result -> vertx.eventBus().send("news-analyser:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-analyser:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
@@ -66,15 +66,16 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
                 );
     }
 
-    private Observable<JsonObject> getRateLimitedAnalyserRequest(JsonObject newsSearchResponse, NewsAnalyserService service) {
+    private Observable<JsonObject> doRateLimitedAnalyserRequest(JsonObject newsSearchResponse, NewsAnalyserService service) {
         Observable<Object> articles = Observable.from(newsSearchResponse.getJsonArray("value"));
         Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
 
         return Observable.zip(articles, interval, (observable, timer) -> observable)
+                .map(json -> (JsonObject) json)
                 .flatMap(json -> {
                     ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.analyseSentiment((JsonObject) json, observable.toHandler());
-                    return observable.map(((JsonObject) json)::mergeIn);
+                    service.analyseSentiment(json, observable.toHandler());
+                    return observable.map(json::mergeIn);
                 })
                 .lastOrDefault(newsSearchResponse);
     }
