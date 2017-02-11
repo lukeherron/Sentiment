@@ -1,0 +1,77 @@
+package com.gofish.sentiment.sentimentservice.monitor;
+
+import com.gofish.sentiment.newslinker.NewsLinkerService;
+import com.gofish.sentiment.sentimentservice.SentimentJob;
+import com.gofish.sentiment.sentimentservice.SentimentService;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.redis.RedisOptions;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.Future;
+import io.vertx.rxjava.redis.RedisClient;
+import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
+import io.vertx.rxjava.servicediscovery.types.EventBusService;
+import rx.Observable;
+
+import java.util.concurrent.TimeUnit;
+
+/**
+ * @author Luke Herron
+ */
+public class NewsLinkerJobMonitor extends AbstractVerticle {
+
+    private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerJobMonitor.class);
+
+    private RedisClient redis;
+    private ServiceDiscovery serviceDiscovery;
+
+    public void start(Future<Void> startFuture) throws Exception {
+        LOG.info("Bringing up News Linker job monitor");
+
+        redis = RedisClient.create(vertx, new RedisOptions().setHost("redis"));
+        serviceDiscovery = ServiceDiscovery.create(vertx);
+
+        redis.ping(resultHandler -> {
+            if (resultHandler.succeeded()) {
+                monitorNewsLinkerJobQueue();
+                startFuture.complete();
+            }
+            else {
+                startFuture.fail(resultHandler.cause());
+            }
+        });
+    }
+
+    private void monitorNewsLinkerJobQueue() {
+        redis.brpoplpushObservable(SentimentService.ENTITYLINK_PENDING, SentimentService.ENTITYLINK_WORKING, 0)
+                .repeat()
+                .map(JsonObject::new)
+                .map(SentimentJob::new)
+                .forEach(this::startNewsLinkingJob);
+    }
+
+    private void startNewsLinkingJob(SentimentJob job) {
+        LOG.info("Starting news linking for job: " + job.getJobId());
+
+        EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
+                .flatMap(service -> Observable.zip( // Try to be a good citizen and rate-limit each request
+                            Observable.from(job.getNewsSearchResponse().getJsonArray("value")),
+                            Observable.interval(400, TimeUnit.MILLISECONDS),
+                            (observable, timer) -> observable)
+                        .flatMap(json -> {
+                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                            service.linkEntities((JsonObject) json, observable.toHandler());
+                            return observable.map(((JsonObject) json)::mergeIn);
+                        })
+                        .lastOrDefault(job.getNewsSearchResponse())
+                )
+                .subscribe(
+                        result -> vertx.eventBus().send("news-linker:" + job.getJobId(), job.getNewsSearchResponse()),
+                        failure -> vertx.eventBus().send("news-linker:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
+                        () -> LOG.info("Completed entity linking")
+                );
+    }
+}
