@@ -1,5 +1,6 @@
 package com.gofish.sentiment.api;
 
+import com.gofish.sentiment.sentimentservice.SentimentService;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;

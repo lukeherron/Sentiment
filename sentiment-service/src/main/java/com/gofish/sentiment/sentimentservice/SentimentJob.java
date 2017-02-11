@@ -4,6 +4,9 @@ import io.vertx.codegen.annotations.DataObject;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.json.JsonObject;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -17,6 +20,7 @@ public class SentimentJob {
 
     private final String jobId;
     private final String query;
+    private final List<JsonObject> results = Collections.synchronizedList(new ArrayList<>());
 
     private State state = State.INACTIVE;
     private int attempts = 0;
@@ -36,6 +40,10 @@ public class SentimentJob {
         query = json.getString("query");
     }
 
+    public int getFailed() {
+        return attempts;
+    }
+
     public String getJobId() {
         return jobId;
     }
@@ -48,20 +56,20 @@ public class SentimentJob {
         return state;
     }
 
-    public void setState(State state) {
-        this.state = state;
+    public long getTimeout() {
+        return Math.round(5L * 0.5 * (Math.pow(2, attempts) - 1));
     }
 
     public void setFailed() {
         attempts++;
     }
 
-    public int getFailed() {
-        return attempts;
+    public void addResult(JsonObject result) {
+        this.results.add(result);
     }
 
-    public long getTimeout() {
-        return Math.round(5L * 0.5 * (Math.pow(2, attempts) - 1));
+    public void setState(State state) {
+        this.state = state;
     }
 
     public JsonObject toJson() {
