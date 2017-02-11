@@ -58,21 +58,24 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         LOG.info("Starting news analysis for job: " + job.getJobId());
 
         EventBusService.<NewsAnalyserService>getProxyObservable(serviceDiscovery, NewsAnalyserService.class.getName())
-                .flatMap(service -> Observable.zip(
-                            Observable.from(job.getNewsSearchResponse().getJsonArray("value")),
-                            Observable.interval(300, TimeUnit.MILLISECONDS),
-                            (observable, timer) -> observable)
-                        .flatMap(json -> {
-                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                            service.analyseSentiment((JsonObject) json, observable.toHandler());
-                            return observable.map(((JsonObject) json)::mergeIn);
-                        })
-                        .lastOrDefault(job.getNewsSearchResponse())
-                )
+                .flatMap(service -> getRateLimitedAnalyserRequest(job.getNewsSearchResponse(), service))
                 .subscribe(
                         result -> vertx.eventBus().send("news-analyser:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-analyser:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
                         () -> LOG.info("Completed sentiment analysis")
                 );
+    }
+
+    private Observable<JsonObject> getRateLimitedAnalyserRequest(JsonObject newsSearchResponse, NewsAnalyserService service) {
+        Observable<Object> articles = Observable.from(newsSearchResponse.getJsonArray("value"));
+        Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
+
+        return Observable.zip(articles, interval, (observable, timer) -> observable)
+                .flatMap(json -> {
+                    ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                    service.analyseSentiment((JsonObject) json, observable.toHandler());
+                    return observable.map(((JsonObject) json)::mergeIn);
+                })
+                .lastOrDefault(newsSearchResponse);
     }
 }
