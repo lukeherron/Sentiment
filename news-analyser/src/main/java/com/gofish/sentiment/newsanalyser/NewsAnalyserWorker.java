@@ -60,7 +60,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             try {
                 final JsonObject article = messageHandler.body().getJsonObject("article");
-                final String analysisText = String.join(" ", article.getString("name"), article.getString("description"));
+                final String analysisText = String.join(". ", article.getString("name"), article.getString("description"));
                 final JsonObject requestData = new JsonObject().put("documents", new JsonArray()
                         .add(new JsonObject()
                                 .put("language", "en")
@@ -88,6 +88,16 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                 messageHandler.fail(2, "Invalid Request");
             }
         });
+    }
+
+    @Override
+    public void stop(Future<Void> stopFuture) throws Exception {
+        httpClient.close();
+        messageConsumer.unregisterObservable().subscribe(
+                stopFuture::complete,
+                stopFuture::fail,
+                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
+        );
     }
 
     private Observable<JsonObject> analyseNewsArticle(HttpClientRequest request) {
@@ -141,15 +151,5 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
-    }
-
-    @Override
-    public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
-        );
     }
 }

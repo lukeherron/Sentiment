@@ -12,6 +12,14 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
     doOnChange = '.\\gradlew classes'
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
 jar {
     manifest {
         attributes 'Main-Class': 'io.vertx.core.Launcher'
@@ -24,6 +32,19 @@ compileJava {
     sourceCompatibility = 1.8
 
     dependsOn annotationProcessing
+}
+
+tasks.withType(FindBugs) {
+    classes = classes.filter {
+        !it.path.contains(new File('com/gofish/sentiment/newscrawler/rxjava').path) &&
+                !it.path.contains(new File('com/gofish/sentiment/newscrawler/NewsCrawlerServiceVertxProxyHandler.class').path) &&
+                !it.path.contains(new File('com/gofish/sentiment/newscrawler/NewsCrawlerServiceVertxEBProxy.class').path)
+    }
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
 }
 
 run {
