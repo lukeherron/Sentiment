@@ -126,16 +126,6 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 }));
     }
 
-    @Override
-    public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("NewsCrawlerWorker messageConsumer unregistered")
-        );
-    }
-
     private Observable<JsonObject> bodyHandlerObservable(HttpClientResponse response) {
         ObservableFuture<JsonObject> observable = io.vertx.rx.java.RxHelper.observableFuture();
 
@@ -159,5 +149,15 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
+    }
+
+    @Override
+    public void stop(Future<Void> stopFuture) throws Exception {
+        httpClient.close();
+        messageConsumer.unregisterObservable().subscribe(
+                stopFuture::complete,
+                stopFuture::fail,
+                () -> LOG.info("NewsCrawlerWorker messageConsumer unregistered")
+        );
     }
 }
