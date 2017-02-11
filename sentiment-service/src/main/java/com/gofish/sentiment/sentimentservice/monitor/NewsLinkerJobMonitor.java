@@ -57,21 +57,25 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         LOG.info("Starting news linking for job: " + job.getJobId());
 
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
-                .flatMap(service -> Observable.zip( // Try to be a good citizen and rate-limit each request
-                            Observable.from(job.getNewsSearchResponse().getJsonArray("value")),
-                            Observable.interval(400, TimeUnit.MILLISECONDS),
-                            (observable, timer) -> observable)
-                        .flatMap(json -> {
-                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                            service.linkEntities((JsonObject) json, observable.toHandler());
-                            return observable.map(((JsonObject) json)::mergeIn);
-                        })
-                        .lastOrDefault(job.getNewsSearchResponse())
-                )
+                .flatMap(service -> getRateLimitedLinkingRequest(job.getNewsSearchResponse(), service))
                 .subscribe(
                         result -> vertx.eventBus().send("news-linker:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-linker:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
                         () -> LOG.info("Completed entity linking")
                 );
+    }
+
+    private Observable<JsonObject> getRateLimitedLinkingRequest(JsonObject newsSearchResponse, NewsLinkerService service) {
+        Observable<Object> articles = Observable.from(newsSearchResponse.getJsonArray("value"));
+        Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
+
+        return Observable.zip(articles, interval, (observable, timer) -> observable)
+                .map(json -> (JsonObject) json)
+                .flatMap(json -> {
+                    ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                    service.linkEntities(json, observable.toHandler());
+                    return observable.map(json::mergeIn);
+                })
+                .lastOrDefault(newsSearchResponse);
     }
 }
