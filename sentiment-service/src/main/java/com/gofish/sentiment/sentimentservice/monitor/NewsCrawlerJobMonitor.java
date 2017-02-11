@@ -62,7 +62,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                     ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
                     return observable;
                 })
-                .doOnNext(job::addResult)
+                .doOnNext(job::setNewsSearchResponse)
                 .map(result -> Observable.merge(
                         redis.lpushObservable(SentimentService.ENTITYLINK_PENDING, job.toJson().encode()),
                         redis.lpushObservable(SentimentService.SENTIMENT_PENDING, job.toJson().encode())
