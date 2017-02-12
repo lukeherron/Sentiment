@@ -65,7 +65,6 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
                 HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
                         .putHeader("Content-Type", "text/plain; charset=UTF-8")
-                        .putHeader("Content-Length", String.valueOf(text.length()))
                         .putHeader("Ocp-Apim-Subscription-Key", apiKey);
 
                 linkNewsArticleEntities(request)
@@ -73,10 +72,10 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> request.end()
+                                () -> LOG.info("Finished News Linking")
                         );
 
-                request.write(text);
+                request.end(text);
             }
             catch (Throwable t) {
                 messageHandler.fail(2, "Invalid Request");
