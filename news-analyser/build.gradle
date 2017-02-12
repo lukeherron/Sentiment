@@ -20,10 +20,10 @@ sourceSets {
     }
 }
 
-jar {
+shadowJar {
     manifest {
-        attributes 'Main-Class': 'io.vertx.core.Launcher'
-        attributes 'Main-Verticle': "$mainVerticleName"
+        //noinspection GroovyAssignabilityCheck
+        attributes ('Main-Class': 'io.vertx.core.Launcher', 'Main-Verticle': "${mainVerticleName}")
     }
 }
 

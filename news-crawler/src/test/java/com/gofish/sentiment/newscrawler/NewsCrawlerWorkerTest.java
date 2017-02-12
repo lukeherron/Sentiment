@@ -47,7 +47,6 @@ public class NewsCrawlerWorkerTest {
         httpClientResponse = mock(HttpClientResponse.class);
 
         URL responseURL = getClass().getClassLoader().getResource("data/NewsCrawlerResponse.json");
-        context.assertNotNull(responseURL);
         assert responseURL != null;
         newsCrawlerResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
 

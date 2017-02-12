@@ -16,11 +16,12 @@
 
 package com.gofish.sentiment.newscrawler.rxjava;
 
+import java.util.Map;
+import rx.Observable;
+import io.vertx.rxjava.core.Vertx;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonObject;
-import io.vertx.rxjava.core.Vertx;
-import rx.Observable;
 
 /**
  *

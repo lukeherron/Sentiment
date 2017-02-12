@@ -61,7 +61,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
                 .subscribe(
                         result -> vertx.eventBus().send("news-linker:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-linker:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
-                        () -> LOG.info("Completed entity linking")
+                        () -> LOG.info("Completed news linking job")
                 );
     }
 

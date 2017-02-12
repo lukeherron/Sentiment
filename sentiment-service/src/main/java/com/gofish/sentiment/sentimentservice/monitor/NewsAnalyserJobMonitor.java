@@ -62,7 +62,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
                 .subscribe(
                         result -> vertx.eventBus().send("news-analyser:" + job.getJobId(), job.getNewsSearchResponse()),
                         failure -> vertx.eventBus().send("news-analyser:" + job.getJobId(), new JsonObject().put("error", failure.getMessage())),
-                        () -> LOG.info("Completed sentiment analysis")
+                        () -> LOG.info("Completed news analysis job")
                 );
     }
 

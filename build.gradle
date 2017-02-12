@@ -52,6 +52,7 @@ configure (subprojects) { project ->
 
     testSets { testIT }
 
+    assemble.dependsOn shadowJar
     check.dependsOn testIT // Ensure both test and testIT run under check
 
     task annotationProcessing(type: JavaCompile, group: 'build', description: "Generates the Vert.x proxies") {
