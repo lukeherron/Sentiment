@@ -95,8 +95,10 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                     .subscribe(
                             result -> messageHandler.reply(result),
                             failure -> messageHandler.fail(1, failure.getMessage()),
-                            () -> request.end()
+                            () -> LOG.info("Finished crawling request: " + query)
                     );
+
+            request.end();
         });
     }
 

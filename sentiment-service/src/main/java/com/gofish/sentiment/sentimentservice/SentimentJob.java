@@ -34,7 +34,7 @@ public class SentimentJob {
     }
 
     public SentimentJob(JsonObject json) {
-        //SentimentJobConverter.fromJson(json, this); // needs to be auto-generated
+        SentimentJobConverter.fromJson(json, this); // needs to be auto-generated
 
         // JobConverter only populates fields that have a setter, so we update the rest manually
         jobId = json.getString("jobId");
@@ -103,7 +103,7 @@ public class SentimentJob {
 
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        //SentimentJobConverter.toJson(this, json); // Needs to be auto-generated first
+        SentimentJobConverter.toJson(this, json); // Needs to be auto-generated first
 
         return json;
     }

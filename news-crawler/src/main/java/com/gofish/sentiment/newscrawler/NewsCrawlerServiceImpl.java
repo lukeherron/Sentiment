@@ -25,7 +25,7 @@ public class NewsCrawlerServiceImpl implements NewsCrawlerService {
     public void crawlQuery(String query, Handler<AsyncResult<JsonObject>> resultHandler) {
         LOG.info("Starting crawl for query: " + query);
 
-        vertx.deployVerticle(NewsCrawlerWorker.ADDRESS, workerOptions, completionHandler -> {
+        vertx.deployVerticle(NewsCrawlerWorker.class.getName(), workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 JsonObject message = new JsonObject().put("query", query);
                 vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, handleReply(resultHandler));

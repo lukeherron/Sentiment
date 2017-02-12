@@ -16,6 +16,14 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
     doOnChange = '.\\gradlew classes'
 }
 
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
 shadowJar {
     manifest {
         //noinspection GroovyAssignabilityCheck

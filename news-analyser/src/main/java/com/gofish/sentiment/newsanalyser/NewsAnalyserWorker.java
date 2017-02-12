@@ -67,24 +67,24 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                                 .put("id", UUID.randomUUID().toString())
                                 .put("text", analysisText)));
 
-                LOG.info("Calling Text Analytics API");
-
                 HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
                         .putHeader("Content-Type", "application/json; charset=UTF-8")
-                        .putHeader("Content-Length", String.valueOf(requestData.encode().length()))
                         .putHeader("Ocp-Apim-Subscription-Key", apiKey);
+
+                LOG.info("Calling Text Analytics API");
                 
                 analyseNewsArticle(request)
                         .flatMap(result -> this.addSentimentResults(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> request.end()
+                                () -> LOG.info("Finished News Analysis")
                         );
-
-                request.write(requestData.encode());
+                
+                request.end(requestData.encode());
             }
             catch (Throwable t) {
+                t.printStackTrace();
                 messageHandler.fail(2, "Invalid Request");
             }
         });
