@@ -1,5 +1,6 @@
 package com.gofish.sentiment.newslinker;
 
+import com.gofish.sentiment.common.http.ResponseHandler;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
@@ -7,18 +8,14 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
-import io.vertx.rxjava.core.http.HttpClientResponse;
 import rx.Observable;
 
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Luke Herron
@@ -70,16 +67,15 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
                 LOG.info("Calling Entity Linking API");
 
-                linkNewsArticleEntities(request)
+                request.toObservable()
+                        .flatMap(ResponseHandler::handle)
                         .flatMap(result -> this.addNewEntities(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
                                 () -> {
-                                    // below end() call needs to occur inside subscribes onComplete to avoid receiving
-                                    // "Request already complete" exceptions. This exception may occur if retries are
-                                    // attempted in linkNewsArticleEntities, and if end() is called elsewhere i.e. after
-                                    // this code block (write() needs to be used instead)
+                                    // request.end() must occur inside onComplete to avoid 'Request already complete'
+                                    // exceptions which may occure if initial request fails and a retry is necessary
                                     request.end();
                                     LOG.info("Finished News Linking");
                                 }
@@ -92,41 +88,6 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 messageHandler.fail(2, "Invalid Request");
             }
         });
-    }
-
-    private Observable<JsonObject> linkNewsArticleEntities(HttpClientRequest request) {
-        return request.toObservable()
-                .flatMap(this::bodyHandlerObservable)
-                .switchMap(json -> {
-                    switch(("" + json.getInteger("statusCode", 0)).charAt(0)) {
-                        case '4':
-                        case '5':
-                            return Observable.error(new Throwable(json.getString("message")));
-                        default:
-                            return Observable.just(json);
-                    }
-                })
-                .retryWhen(errors -> errors.flatMap(error -> {
-                    // This will keep retrying the request until the vertx reply handler times out, at which point the
-                    // request should be re-queued and no longer the responsibility of this worker.
-                    error.printStackTrace();
-                    int delay = 2;
-                    if (error.getMessage().contains("Rate limit is exceeded")) {
-                        delay = Integer.parseInt(error.getMessage().replaceAll("[^\\d]", ""));
-                    }
-
-                    return Observable.timer(delay, TimeUnit.SECONDS);
-                }));
-    }
-
-    private Observable<JsonObject> bodyHandlerObservable(HttpClientResponse response) {
-        ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-
-        response.bodyHandler(buffer -> {
-            observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject()));
-        });
-
-        return observable;
     }
 
     private Observable<JsonObject> addNewEntities(JsonObject article, JsonObject linkerResponse) {
@@ -164,7 +125,6 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        // TODO: clean up all resources
         messageConsumer.unregisterObservable().subscribe(
                 stopFuture::complete,
                 stopFuture::fail,
