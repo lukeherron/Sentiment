@@ -10,6 +10,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
@@ -60,24 +61,34 @@ public class NewsLinkerWorker  extends AbstractVerticle {
             try {
                 final JsonObject article = messageHandler.body().getJsonObject("article");
                 final String text = String.join(". ", article.getString("name"), article.getString("description"));
-
-                LOG.info("Calling Entity Linking API");
+                final Buffer chunk = Buffer.buffer(text);
 
                 HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
                         .putHeader("Content-Type", "text/plain; charset=UTF-8")
+                        .putHeader("Content-Length", String.valueOf(chunk.length()))
                         .putHeader("Ocp-Apim-Subscription-Key", apiKey);
+
+                LOG.info("Calling Entity Linking API");
 
                 linkNewsArticleEntities(request)
                         .flatMap(result -> this.addNewEntities(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> LOG.info("Finished News Linking")
+                                () -> {
+                                    // below end() call needs to occur inside subscribes onComplete to avoid receiving
+                                    // "Request already complete" exceptions. This exception may occur if retries are
+                                    // attempted in linkNewsArticleEntities, and if end() is called elsewhere i.e. after
+                                    // this code block (write() needs to be used instead)
+                                    request.end();
+                                    LOG.info("Finished News Linking");
+                                }
                         );
 
-                request.end(text);
+                request.write(chunk);
             }
             catch (Throwable t) {
+                t.printStackTrace();
                 messageHandler.fail(2, "Invalid Request");
             }
         });
@@ -98,6 +109,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 .retryWhen(errors -> errors.flatMap(error -> {
                     // This will keep retrying the request until the vertx reply handler times out, at which point the
                     // request should be re-queued and no longer the responsibility of this worker.
+                    error.printStackTrace();
                     int delay = 2;
                     if (error.getMessage().contains("Rate limit is exceeded")) {
                         delay = Integer.parseInt(error.getMessage().replaceAll("[^\\d]", ""));

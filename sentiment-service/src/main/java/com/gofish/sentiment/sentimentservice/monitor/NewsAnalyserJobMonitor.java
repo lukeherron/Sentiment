@@ -47,7 +47,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
     }
 
     private void monitorNewsAnalyserJobQueue() {
-        redis.brpoplpushObservable(SentimentService.SENTIMENT_PENDING, SentimentService.SENTIMENT_WORKING, 0)
+        redis.brpoplpushObservable(SentimentService.NEWS_ANALYSER_PENDING_QUEUE, SentimentService.NEWS_ANALYSER_WORKING_QUEUE, 0)
                 .repeat()
                 .map(JsonObject::new)
                 .map(SentimentJob::new)

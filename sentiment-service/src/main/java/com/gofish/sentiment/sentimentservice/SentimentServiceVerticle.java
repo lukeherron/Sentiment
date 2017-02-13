@@ -86,4 +86,23 @@ public class SentimentServiceVerticle extends AbstractVerticle {
                 })
         );
     }
+
+    @Override
+    public void stop(Future<Void> stopFuture) throws Exception {
+        Future<Void> recordUnpublishFuture = Future.future();
+        Future<Void> messageConsumerUnregisterFuture = Future.future();
+
+        serviceDiscovery.unpublish(record.getRegistration(), recordUnpublishFuture.completer());
+        messageConsumer.unregister(messageConsumerUnregisterFuture.completer());
+
+        recordUnpublishFuture.compose(v -> messageConsumerUnregisterFuture).setHandler(v -> {
+            serviceDiscovery.close();
+            if (v.succeeded()) {
+                stopFuture.complete();
+            }
+            else {
+                stopFuture.fail(v.cause());
+            }
+        });
+    }
 }

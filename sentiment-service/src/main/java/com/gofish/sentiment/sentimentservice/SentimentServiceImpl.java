@@ -109,11 +109,11 @@ public class SentimentServiceImpl implements SentimentService {
         linkerConsumer.endHandler(endHandler -> linkerConsumer.unregister());
 
         // With the listeners ready, we can push the job onto the queue
-        redis.lpush(SentimentService.NEWSCRAWLER_PENDING, job.toJson().encode(), pushHandler -> {
+        redis.lpush(SentimentService.NEWS_CRAWLER_PENDING_QUEUE, job.toJson().encode(), pushHandler -> {
             if (pushHandler.succeeded()) {
                 LOG.info("Job added to queue: " + pushHandler.result());
             }
-            else {
+            else if (!analyseSentimentFuture.failed()) {
                 analyseSentimentFuture.fail(pushHandler.cause());
             }
         });

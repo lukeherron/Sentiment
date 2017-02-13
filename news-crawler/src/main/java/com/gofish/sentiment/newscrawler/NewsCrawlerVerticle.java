@@ -62,7 +62,7 @@ public class NewsCrawlerVerticle extends AbstractVerticle {
                 stopFuture.complete();
             }
             else {
-                stopFuture.failed();
+                stopFuture.fail(v.cause());
             }
         });
     }

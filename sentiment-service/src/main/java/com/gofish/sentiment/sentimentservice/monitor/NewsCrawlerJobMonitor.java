@@ -45,7 +45,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
     }
 
     private void monitorNewsCrawlerJobQueue() {
-        redis.brpoplpushObservable(SentimentService.NEWSCRAWLER_PENDING, SentimentService.NEWSCRAWLER_WORKING, 0)
+        redis.brpoplpushObservable(SentimentService.NEWS_CRAWLER_PENDING_QUEUE, SentimentService.NEWS_CRAWLER_WORKING_QUEUE, 0)
                 .repeat()
                 .map(JsonObject::new)
                 .map(SentimentJob::new)
@@ -64,8 +64,8 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                 })
                 .doOnNext(job::setNewsSearchResponse)
                 .map(result -> Observable.merge(
-                        redis.lpushObservable(SentimentService.ENTITYLINK_PENDING, job.toJson().encode()),
-                        redis.lpushObservable(SentimentService.SENTIMENT_PENDING, job.toJson().encode())
+                        redis.lpushObservable(SentimentService.NEWS_LINKER_PENDING_QUEUE, job.toJson().encode()),
+                        redis.lpushObservable(SentimentService.NEWS_ANALYSER_PENDING_QUEUE, job.toJson().encode())
                 )) // TODO: handle push errors, implement retry etc.
                 .subscribe(
                         result -> LOG.info("Pushing jobs to entity linking and sentiment pending queues"),

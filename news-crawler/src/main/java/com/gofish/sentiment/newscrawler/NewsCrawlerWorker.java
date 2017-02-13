@@ -8,6 +8,7 @@ import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
@@ -73,6 +74,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             final String query = messageHandler.body().getString("query");
             final String requestUri = String.join("", urlPath, "?q=", query);
+            final Buffer chunk = Buffer.buffer();
             //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
 
             // Fail early on easily-discerned failures
@@ -82,23 +84,27 @@ public class NewsCrawlerWorker extends AbstractVerticle {
 
             LOG.info("Crawling query: " + query);
 
-//            RxHelper.get(httpClient, port, baseUrl, requestUri, headers)
-//                    .doOnNext(response -> LOG.info(response.statusCode() + ": " + response.statusMessage()))
-//                    .flatMap(this::bodyHandlerObservable)
-//                    .map(responseParser::parse)
-//                    .subscribe();
             HttpClientRequest request = httpClient.request(HttpMethod.GET, port, baseUrl, requestUri)
+                    .putHeader("Content-Length", String.valueOf(chunk.length()))
                     .putHeader("Ocp-Apim-Subscription-Key", apiKey);
 
             crawlNewsArticles(request)
+            //crawlNewsArticles(requestUri, headers)
                     .map(responseParser::parse)
                     .subscribe(
                             result -> messageHandler.reply(result),
                             failure -> messageHandler.fail(1, failure.getMessage()),
-                            () -> LOG.info("Finished crawling request: " + query)
+                            () -> {
+                                // below end() call needs to occur inside subscribes onComplete to avoid receiving
+                                // "Request already complete" exceptions. This exception may occur if retries are
+                                // attempted in crawlNewsArticles and end() is called elsewhere i.e. after
+                                // this code block (write() needs to be used instead)
+                                request.end();
+                                LOG.info("Finished crawling request: " + query);
+                            }
                     );
 
-            request.end();
+            request.write(chunk);
         });
     }
 
@@ -128,10 +134,37 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 }));
     }
 
+//    private Observable<JsonObject> crawlNewsArticles(String requestUri, MultiMap headers) {
+//        return RxHelper.get(httpClient, port, baseUrl, requestUri, headers)
+//                .doOnNext(response -> LOG.info(response.statusCode() + ": " + response.statusMessage()))
+//                .flatMap(this::bodyHandlerObservable)
+//                .switchMap(json -> {
+//                    JsonObject error = json.getJsonObject("error", new JsonObject());
+//                    switch(("" + error.getInteger("statusCode", 0)).charAt(0)) {
+//                        case '4':
+//                        case '5':
+//                            return Observable.error(new Throwable(json.getString("message")));
+//                        default:
+//                            return Observable.just(json);
+//                    }
+//                })
+//                .retryWhen(errors -> errors.flatMap(error -> {
+//                    int delay = 2;
+//                    if (error.getMessage().contains("Rate limit is exceeded")) {
+//                        delay = Integer.parseInt(error.getMessage().replaceAll("[^\\d]", ""));
+//                    }
+//
+//                    return Observable.timer(delay, TimeUnit.SECONDS);
+//                }));
+//    }
+
     private Observable<JsonObject> bodyHandlerObservable(HttpClientResponse response) {
         ObservableFuture<JsonObject> observable = io.vertx.rx.java.RxHelper.observableFuture();
 
         response.bodyHandler(buffer -> {
+            //String result = buffer.toString("CP1252").replaceAll("[^ -~]", "");
+            //String result = buffer.toString().replaceAll("[^\\p{L}\\p{Nd}]+", "");
+            //JsonObject json = new JsonObject(result);
             observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject()));
         });
 

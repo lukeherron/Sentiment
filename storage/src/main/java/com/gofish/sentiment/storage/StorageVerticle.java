@@ -70,7 +70,7 @@ public class StorageVerticle extends AbstractVerticle {
                 stopFuture.complete();
             }
             else {
-                stopFuture.failed();
+                stopFuture.fail(v.cause());
             }
         });
     }

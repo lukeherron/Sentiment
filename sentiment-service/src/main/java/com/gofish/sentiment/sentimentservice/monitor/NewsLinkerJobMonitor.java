@@ -3,6 +3,7 @@ package com.gofish.sentiment.sentimentservice.monitor;
 import com.gofish.sentiment.newslinker.NewsLinkerService;
 import com.gofish.sentiment.sentimentservice.SentimentJob;
 import com.gofish.sentiment.sentimentservice.SentimentService;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -10,7 +11,6 @@ import io.vertx.redis.RedisOptions;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
-import io.vertx.rxjava.core.Future;
 import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.rxjava.servicediscovery.types.EventBusService;
@@ -23,11 +23,12 @@ import java.util.concurrent.TimeUnit;
  */
 public class NewsLinkerJobMonitor extends AbstractVerticle {
 
-    private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerJobMonitor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(NewsLinkerJobMonitor.class);
 
     private RedisClient redis;
     private ServiceDiscovery serviceDiscovery;
 
+    @Override
     public void start(Future<Void> startFuture) throws Exception {
         LOG.info("Bringing up News Linker job monitor");
 
@@ -46,7 +47,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
     }
 
     private void monitorNewsLinkerJobQueue() {
-        redis.brpoplpushObservable(SentimentService.ENTITYLINK_PENDING, SentimentService.ENTITYLINK_WORKING, 0)
+        redis.brpoplpushObservable(SentimentService.NEWS_LINKER_PENDING_QUEUE, SentimentService.NEWS_LINKER_WORKING_QUEUE, 0)
                 .repeat()
                 .map(JsonObject::new)
                 .map(SentimentJob::new)
