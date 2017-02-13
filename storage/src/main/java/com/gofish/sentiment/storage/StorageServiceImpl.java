@@ -33,57 +33,71 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
-    public void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) {
+    public StorageService createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) {
         JsonObject message = new JsonObject().put("collectionName", collectionName);
 
         getResult(message, deliveryOptions.get("createCollection"), handleReply(resultHandler, Void.class));
+
+        return this;
     }
 
     @Override
-    public void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+    public StorageService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
         JsonObject message = new JsonObject()
                 .put("collectionName", collectionName)
                 .put("indexName", collectionName + "Index")
                 .put("collectionIndex", collectionIndex);
 
         getResult(message, deliveryOptions.get("createIndex"), handleReply(resultHandler, Void.class));
+
+        return this;
     }
 
     @Override
-    public void getCollections(Handler<AsyncResult<JsonArray>> resultHandler) {
+    public StorageService getCollections(Handler<AsyncResult<JsonArray>> resultHandler) {
         getResult(new JsonObject(), deliveryOptions.get("getCollections"), handleReply(resultHandler, JsonArray.class));
+
+        return this;
     }
 
     @Override
-    public void getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) {
+    public StorageService getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) {
         JsonObject message = new JsonObject().put("collectionName", collectionName);
 
         getResult(message, deliveryOptions.get("getSentimentResults"), handleReply(resultHandler, JsonObject.class));
+
+        return this;
     }
 
     @Override
-    public void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
+    public StorageService hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
         JsonObject message = new JsonObject().put("collectionName", collectionName);
 
         getResult(message, deliveryOptions.get("hasCollection"), handleReply(resultHandler, Boolean.class));
+
+        return this;
     }
 
     @Override
-    public void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
+    public StorageService saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
         JsonObject message = new JsonObject()
                 .put("collectionName", collectionName)
                 .put("articles", articles);
 
         getResult(message, deliveryOptions.get("saveArticles"), handleReply(resultHandler, JsonObject.class));
+
+        return this;
     }
 
     @Override
-    public void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
+    public StorageService isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
         JsonObject message = new JsonObject()
                 .put("indexName", indexName)
                 .put("collectionName", collectionName);
 
         getResult(message, deliveryOptions.get("isIndexPresent"), handleReply(resultHandler, Boolean.class));
+
+        return this;
     }
 
     private void getResult(JsonObject message, DeliveryOptions deliveryOptions, Handler<AsyncResult<Message<Object>>> replyHandler) {

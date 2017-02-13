@@ -155,7 +155,18 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Retrieving sentiment results");
 
-        mongo.findBatchObservable(collectionName, new JsonObject())
+        JsonObject command = new JsonObject()
+                .put("aggregate", collectionName)
+                .put("pipeline", new JsonArray()
+                    .add(new JsonObject().put("$group", new JsonObject()
+                            .put("_id", "")
+                            .put("score", new JsonObject().put("$avg", "$sentiment.score"))))
+                    .add(new JsonObject().put("$project", new JsonObject().put("_id", 0)))
+                );
+
+        mongo.runCommandObservable("aggregate", command)
+                .map(response -> response.getJsonArray("result", new JsonArray()))
+                .map(json -> json.isEmpty() ? new JsonObject() : json.getJsonObject(0))
                 .subscribe(
                         result -> message.reply(result),
                         failure -> message.fail(1, failure.getMessage()),

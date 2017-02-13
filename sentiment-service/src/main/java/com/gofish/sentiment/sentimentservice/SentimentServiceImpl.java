@@ -34,20 +34,24 @@ public class SentimentServiceImpl implements SentimentService {
 
     @Override
     public SentimentService getSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler) {
-        Future<JsonObject> sentimentFuture = Future.future();
+        final Future<JsonObject> sentimentFuture = Future.future();
 
         getStorageService().compose(storageService ->
-                        storageService.getSentimentResults(query, sentimentFuture.completer()),
-                sentimentFuture);
+                        storageService.getSentimentResults(query, sentimentFuture.completer()), sentimentFuture);
 
         sentimentFuture.setHandler(sentimentHandler -> {
-            JsonObject sentimentResult = sentimentHandler.result();
-            if (sentimentHandler.succeeded() && sentimentResult != null) {
-                resultHandler.handle(Future.succeededFuture(sentimentResult));
-            }
-            else if (sentimentHandler.succeeded() && sentimentResult == null){
-                // Create the collection and run a new crawl job to analyse the sentiment
-                addNewQuery(query).compose(v -> analyseSentiment(query)).setHandler(resultHandler);
+            if (sentimentHandler.succeeded()) {
+                final JsonObject sentimentResult = sentimentHandler.result();
+                if (sentimentResult.isEmpty()) {
+                    // If the result is empty it will be because the query has not been added and analysed. We perform
+                    // both of these steps and then return the results.
+                    addNewQuery(query)
+                            .compose(v -> analyseSentiment(query))
+                            .setHandler(resultHandler);
+                }
+                else {
+                    resultHandler.handle(Future.succeededFuture(sentimentResult));
+                }
             }
             else {
                 resultHandler.handle(Future.failedFuture(sentimentHandler.cause()));
@@ -58,15 +62,15 @@ public class SentimentServiceImpl implements SentimentService {
     }
 
     private Future<Void> addNewQuery(String query) {
-        Future<Void> addNewQueryFuture = Future.future();
-        Future<Void> createCollectionFuture = Future.future();
-        Future<Void> createIndexFuture = Future.future();
+        final Future<Void> addNewQueryFuture = Future.future();
+        final Future<Void> createCollectionFuture = Future.future();
+        final Future<Void> createIndexFuture = Future.future();
 
         // Start by creating a collection in the DB named after the query, then create an index for that collection
         getStorageService()
                 .compose(storageService -> {
-                    storageService.createCollection(query, createCollectionFuture.completer());
-                    return getStorageService();
+                    final StorageService service = storageService.createCollection(query, createCollectionFuture.completer());
+                    return Future.succeededFuture(service);
                 })
                 .compose(storageService -> {
                     final JsonObject collectionIndex = new JsonObject()
@@ -83,23 +87,23 @@ public class SentimentServiceImpl implements SentimentService {
     }
 
     private Future<JsonObject> analyseSentiment(String query) {
-        Future<JsonObject> newsAnalyserFuture = Future.future();
-        Future<JsonObject> newsLinkerFuture = Future.future();
-        CompositeFuture analyseSentimentFuture = CompositeFuture.join(newsAnalyserFuture, newsLinkerFuture);
+        final Future<JsonObject> newsAnalyserFuture = Future.future();
+        final Future<JsonObject> newsLinkerFuture = Future.future();
+        final CompositeFuture analyseSentimentFuture = CompositeFuture.join(newsAnalyserFuture, newsLinkerFuture);
 
-        SentimentJob job = new SentimentJob(query);
+        final SentimentJob job = new SentimentJob(query);
 
         // Set up a unique listener to receive the results of a processed job. There are three specific job queues
         // (although each are split into pending/working), but we only need to listen for two: news-analyser and
         // news-linker, as both of these queues work on the results of the news-crawler job queue, i.e. we know we can't
         // receive the final result from the news-crawler, so we exclude listening for its results.
-        MessageConsumer<JsonObject> analyseConsumer = vertx.eventBus().localConsumer("news-analyser:" + job.getJobId(), messageHandler -> {
-            JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
+        final MessageConsumer<JsonObject> analyseConsumer = vertx.eventBus().localConsumer("news-analyser:" + job.getJobId(), messageHandler -> {
+            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
             newsAnalyserFuture.complete(result);
         });
 
-        MessageConsumer<JsonObject> linkerConsumer = vertx.eventBus().localConsumer("news-linker:" + job.getJobId(), messageHandler -> {
-            JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
+        final MessageConsumer<JsonObject> linkerConsumer = vertx.eventBus().localConsumer("news-linker:" + job.getJobId(), messageHandler -> {
+            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
             newsLinkerFuture.complete(result);
         });
 
@@ -118,16 +122,23 @@ public class SentimentServiceImpl implements SentimentService {
             }
         });
 
-        return analyseSentimentFuture.map(future -> mergeFutureResults(newsAnalyserFuture, newsLinkerFuture));
+        return analyseSentimentFuture
+                .map(future -> mergeFutureResults(newsAnalyserFuture, newsLinkerFuture))
+                .compose(json -> saveAnalysis(query, json.getJsonArray("value")))
+                .compose(json -> getStorageService().compose(storageService -> {
+                    final Future<JsonObject> sentimentResultsFuture = Future.future();
+                    storageService.getSentimentResults(query, sentimentResultsFuture.completer());
+                    return sentimentResultsFuture;
+                }));
     }
 
     private JsonObject mergeFutureResults(Future<JsonObject> newsAnalyserFuture, Future<JsonObject> newsLinkerFuture) {
-        JsonObject analysisJson = newsAnalyserFuture.result();
-        JsonObject linkingJson = newsLinkerFuture.result();
-        JsonArray linkingValues = linkingJson.getJsonArray("value");
+        final JsonObject analysisJson = newsAnalyserFuture.result();
+        final JsonObject linkingJson = newsLinkerFuture.result();
+        final JsonArray linkingValues = linkingJson.getJsonArray("value");
 
-        JsonObject resultJson = new JsonObject().mergeIn(analysisJson);
-        JsonArray resultJsonValues = resultJson.getJsonArray("value");
+        final JsonObject resultJson = new JsonObject().mergeIn(analysisJson);
+        final JsonArray resultJsonValues = resultJson.getJsonArray("value");
 
         // Iterate each value, and merge in the matching values from linkingJson
         resultJsonValues.stream()
@@ -138,6 +149,15 @@ public class SentimentServiceImpl implements SentimentService {
                         .forEach(article::mergeIn));
 
         return resultJson;
+    }
+
+    private Future<JsonObject> saveAnalysis(String query, JsonArray articles) {
+        final Future<JsonObject> saveAnalysisFuture = Future.future();
+
+        return getStorageService().compose(storageService -> {
+            storageService.saveArticles(query, articles, saveAnalysisFuture.completer());
+            return saveAnalysisFuture;
+        });
     }
 
     private Future<StorageService> getStorageService() {

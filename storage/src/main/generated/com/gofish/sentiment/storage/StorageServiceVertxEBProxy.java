@@ -65,10 +65,10 @@ public class StorageServiceVertxEBProxy implements StorageService {
     } catch (IllegalStateException ex) {}
   }
 
-  public void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) {
+  public StorageService createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
@@ -81,12 +81,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
+  public StorageService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
@@ -100,12 +101,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void getCollections(Handler<AsyncResult<JsonArray>> resultHandler) {
+  public StorageService getCollections(Handler<AsyncResult<JsonArray>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
@@ -117,12 +119,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) {
+  public StorageService getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
@@ -135,12 +138,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
+  public StorageService hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
@@ -153,12 +157,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
+  public StorageService isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("indexName", indexName);
@@ -172,12 +177,13 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
-  public void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
+  public StorageService saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) {
     if (closed) {
       resultHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
-      return;
+      return this;
     }
     JsonObject _json = new JsonObject();
     _json.put("collectionName", collectionName);
@@ -191,6 +197,7 @@ public class StorageServiceVertxEBProxy implements StorageService {
         resultHandler.handle(Future.succeededFuture(res.result().body()));
       }
     });
+    return this;
   }
 
 
