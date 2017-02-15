@@ -18,7 +18,9 @@ import io.vertx.servicediscovery.ServiceDiscovery;
 import io.vertx.servicediscovery.types.EventBusService;
 import io.vertx.serviceproxy.ProxyHelper;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -55,10 +57,13 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         // is actually up and running (and responds to a ping) before launching the workers.
         RedisClient.create(vertx, new RedisOptions().setHost("redis")).ping(jobQueueFuture.completer());
 
+
+        // Once we know this verticles service has been announced to the cluster and our job queue is up and running,
+        // we can go ahead and deploy the workers that monitor our queues and the timed crawler which will start
+        // generating jobs and putting them into the queues
         CompositeFuture.all(publishFuture, jobQueueFuture).setHandler(resultHandler -> {
             if (resultHandler.succeeded()) {
-                deployQueueWorkers();
-                startFuture.complete();
+                deployQueueWorkers().compose(v -> deployTimedCrawler()).setHandler(startFuture.completer());
             }
             else {
                 LOG.error(resultHandler.cause());
@@ -67,24 +72,31 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         });
     }
 
-    private void deployQueueWorkers() {
+    private Future<Void> deployQueueWorkers() {
         // Deploy worker verticles which poll each pending job queue
         DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(8);
+        List<Future> deployFutures = new ArrayList<>();
 
         Arrays.asList(
                 NewsCrawlerJobMonitor.class.getName(),
                 NewsLinkerJobMonitor.class.getName(),
                 NewsAnalyserJobMonitor.class.getName()
-        ).forEach(verticleWorker ->
-                vertx.deployVerticle(verticleWorker, deploymentOptions, completionHandler -> {
-                    if (completionHandler.succeeded()) {
-                        LOG.info("QueueWorker deployed: " + completionHandler.result());
-                    }
-                    else {
-                        LOG.error(completionHandler.cause());
-                    }
-                })
-        );
+        ).forEach(verticleWorker -> {
+            Future<String> deployFuture = Future.future();
+            deployFutures.add(deployFuture);
+            vertx.deployVerticle(verticleWorker, deploymentOptions, deployFuture.completer());
+        });
+
+        return CompositeFuture.all(deployFutures).map(v -> null);
+    }
+
+    private Future<Void> deployTimedCrawler() {
+        Future<String> deployFuture = Future.future();
+        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true);
+
+        vertx.deployVerticle(PeriodicCrawlerWorker.class.getName(), deploymentOptions, deployFuture.completer());
+
+        return deployFuture.map(v -> null);
     }
 
     @Override
@@ -95,14 +107,9 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         serviceDiscovery.unpublish(record.getRegistration(), recordUnpublishFuture.completer());
         messageConsumer.unregister(messageConsumerUnregisterFuture.completer());
 
-        recordUnpublishFuture.compose(v -> messageConsumerUnregisterFuture).setHandler(v -> {
+        recordUnpublishFuture.compose(v -> {
             serviceDiscovery.close();
-            if (v.succeeded()) {
-                stopFuture.complete();
-            }
-            else {
-                stopFuture.fail(v.cause());
-            }
-        });
+            return messageConsumerUnregisterFuture;
+        }).setHandler(stopFuture.completer());
     }
 }
