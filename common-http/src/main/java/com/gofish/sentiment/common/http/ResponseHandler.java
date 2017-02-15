@@ -24,11 +24,16 @@ public class ResponseHandler {
         response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
 
         return observable.switchMap(json -> {
-            System.out.println(json.encodePrettily());
-            switch(("" + json.getInteger("statusCode", 0)).charAt(0)) {
+            JsonObject error = json.getJsonObject("error");
+
+            if (error == null) {
+                return Observable.just(json);
+            }
+
+            switch(("" + error.getInteger("statusCode", 0)).charAt(0)) {
                 case '4':
                 case '5':
-                    return Observable.error(new Throwable(json.getString("message")));
+                    return Observable.error(new Throwable(error.getString("message")));
                 default:
                     return Observable.just(json);
             }

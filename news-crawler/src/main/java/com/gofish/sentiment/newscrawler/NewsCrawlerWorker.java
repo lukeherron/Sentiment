@@ -70,14 +70,15 @@ public class NewsCrawlerWorker extends AbstractVerticle {
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             final String query = messageHandler.body().getString("query");
-            final String requestUri = String.join("", urlPath, "?q=", query);
-            final Buffer chunk = Buffer.buffer();
-            //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
 
             // Fail early on easily-discerned failures
             if (query == null || query.isEmpty()) {
                 messageHandler.fail(1, "Invalid Query");
             }
+
+            final String requestUri = String.join("", urlPath, "?q=", query);
+            final Buffer chunk = Buffer.buffer();
+            //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
 
             LOG.info("Crawling query: " + query);
 

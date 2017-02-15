@@ -56,8 +56,21 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             try {
-                final JsonObject article = messageHandler.body().getJsonObject("article");
-                final String text = String.join(". ", article.getString("name"), article.getString("description"));
+                final JsonObject article = messageHandler.body().getJsonObject("article", new JsonObject());
+                final String articleName = article.getString("name");
+                final String articleDescription = article.getString("description");
+
+                if (articleName == null && articleDescription == null) {
+                    messageHandler.fail(1, "Invalid Request");
+                }
+                else if (articleName == null) {
+                    messageHandler.fail(1, "Invalid article headline supplied");
+                }
+                else if (articleDescription == null) {
+                    messageHandler.fail(1, "Invalid article lead paragraph supplied");
+                }
+
+                final String text = String.join(". ", articleName, articleDescription);
                 final Buffer chunk = Buffer.buffer(text);
 
                 HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)

@@ -62,6 +62,17 @@ public class SentimentService {
     return resultHandler;
   }
 
+  public SentimentService analyseSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler) { 
+    delegate.analyseSentiment(query, resultHandler);
+    return this;
+  }
+
+  public Observable<JsonObject> analyseSentimentObservable(String query) { 
+    io.vertx.rx.java.ObservableFuture<JsonObject> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
+    analyseSentiment(query, resultHandler.toHandler());
+    return resultHandler;
+  }
+
 
   public static SentimentService newInstance(com.gofish.sentiment.sentimentservice.SentimentService arg) {
     return arg != null ? new SentimentService(arg) : null;

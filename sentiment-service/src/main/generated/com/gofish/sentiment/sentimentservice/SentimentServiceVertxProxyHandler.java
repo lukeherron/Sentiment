@@ -128,6 +128,10 @@ public class SentimentServiceVertxProxyHandler extends ProxyHandler {
           service.getSentiment((java.lang.String)json.getValue("query"), createHandler(msg));
           break;
         }
+        case "analyseSentiment": {
+          service.analyseSentiment((java.lang.String)json.getValue("query"), createHandler(msg));
+          break;
+        }
         default: {
           throw new IllegalStateException("Invalid action: " + action);
         }

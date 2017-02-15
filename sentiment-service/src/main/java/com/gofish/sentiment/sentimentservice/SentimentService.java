@@ -36,4 +36,7 @@ public interface SentimentService {
 
     @Fluent
     SentimentService getSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler);
+
+    @Fluent
+    SentimentService analyseSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler);
 }

@@ -236,7 +236,9 @@ public class StorageVerticleIT {
 
     @Test
     public void testStorageServiceCanGetSentimentResult(TestContext context) {
-        storageService.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(context::assertNull));
+        storageService.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(result -> {
+            context.assertTrue(result.isEmpty());
+        }));
     }
 
     @Test
@@ -244,6 +246,8 @@ public class StorageVerticleIT {
         StorageService service = StorageService.createProxy(vertx, StorageService.ADDRESS);
         context.assertNotNull(service);
 
-        service.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(context::assertNull));
+        service.getSentimentResults("testSentimentCollection", context.asyncAssertSuccess(result -> {
+            context.assertTrue(result.isEmpty());
+        }));
     }
 }

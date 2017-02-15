@@ -161,7 +161,7 @@ public class StorageWorker extends AbstractVerticle {
                     .add(new JsonObject().put("$group", new JsonObject()
                             .put("_id", "")
                             .put("score", new JsonObject().put("$avg", "$sentiment.score"))))
-                    .add(new JsonObject().put("$project", new JsonObject().put("_id", 0)))
+                    .add(new JsonObject().put("$project", new JsonObject().put("_id", 0).put("score", 1)))
                 );
 
         mongo.runCommandObservable("aggregate", command)

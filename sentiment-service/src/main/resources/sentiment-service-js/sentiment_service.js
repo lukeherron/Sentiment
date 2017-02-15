@@ -52,6 +52,27 @@ var SentimentService = function(j_val) {
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
+  /**
+
+   @public
+   @param query {string} 
+   @param resultHandler {function} 
+   @return {SentimentService}
+   */
+  this.analyseSentiment = function(query, resultHandler) {
+    var __args = arguments;
+    if (__args.length === 2 && typeof __args[0] === 'string' && typeof __args[1] === 'function') {
+      j_sentimentService["analyseSentiment(java.lang.String,io.vertx.core.Handler)"](query, function(ar) {
+      if (ar.succeeded()) {
+        resultHandler(utils.convReturnJson(ar.result()), null);
+      } else {
+        resultHandler(null, ar.cause());
+      }
+    });
+      return that;
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
   // A reference to the underlying Java delegate
   // NOTE! This is an internal API and must not be used in user code.
   // If you rely on this property your code is likely to break if we change it / remove it without warning.
