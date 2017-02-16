@@ -16,6 +16,7 @@ import io.vertx.rxjava.servicediscovery.types.EventBusService;
 import rx.Observable;
 
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author Luke Herron
@@ -50,29 +51,47 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
     }
 
     private void startPeriodicCrawl() {
+        LOG.info("Starting periodic crawl");
+
         vertx.periodicStream(config.getInteger("timer.delay", DEFAULT_TIMER_DELAY))
                 .toObservable()
-                .flatMap(id -> EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName()))
-                .flatMap(storageService -> {
-                    ObservableFuture<JsonArray> observable = RxHelper.observableFuture();
-                    storageService.getCollections(observable.toHandler());
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, storageService);
-                    return observable;
-                })
+                .flatMap(id -> getStorageServiceObservable())
+                .retryWhen(this::getRetryStrategy)
+                .flatMap(this::getCollectionsObservable)
                 .flatMap(Observable::from)
                 .map(query -> (String) query)
-                .flatMap(query -> EventBusService.<SentimentService>getProxyObservable(serviceDiscovery, SentimentService.class.getName())
-                        .flatMap(sentimentService -> {
-                            // We aren't concerned with returning results from the analysis, as we won't be using them
-                            // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
-                            // out of necessity but we do not wait on it and simply return the original query
-                            sentimentService.analyseSentiment(query, resultHandler -> {});
-                            return Observable.just(query);
-                        }))
+                .flatMap(this::startAnalysis)
                 .subscribe(
                         result -> LOG.info("Queued crawl request for query: " + result),
                         failure -> LOG.error(failure),
                         () -> LOG.info("Periodic crawl is complete")
                 );
+    }
+
+    private Observable<StorageService> getStorageServiceObservable() {
+        return EventBusService.getProxyObservable(serviceDiscovery, StorageService.class.getName());
+    }
+
+    private Observable<Long> getRetryStrategy(Observable<? extends Throwable> attempts) {
+        return attempts.zipWith(Observable.range(1, 100), (n, i) -> i)
+                .flatMap(i -> Observable.timer(i, TimeUnit.SECONDS));
+    }
+
+    private Observable<JsonArray> getCollectionsObservable(StorageService storageService) {
+        ObservableFuture<JsonArray> observable = RxHelper.observableFuture();
+        storageService.getCollections(observable.toHandler());
+        ServiceDiscovery.releaseServiceObject(serviceDiscovery, storageService);
+        return observable;
+    }
+
+    private Observable<String> startAnalysis(String query) {
+        return EventBusService.<SentimentService>getProxyObservable(serviceDiscovery, SentimentService.class.getName())
+                .flatMap(sentimentService -> {
+                    // We aren't concerned with returning results from the analysis, as we won't be using them
+                    // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
+                    // out of necessity but we do not wait on it and simply return the original query
+                    sentimentService.analyseSentiment(query, resultHandler -> {});
+                    return Observable.just(query);
+                });
     }
 }
