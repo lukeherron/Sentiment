@@ -1,2 +1,8 @@
 rootProject.name = 'sentiment'
-
+include 'api-gateway'
+include 'common-http'
+include 'news-analyser'
+include 'news-crawler'
+include 'news-linker'
+include 'sentiment-service'
+include 'storage'

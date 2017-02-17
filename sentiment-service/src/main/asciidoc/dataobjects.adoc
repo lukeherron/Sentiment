@@ -1,0 +1,24 @@
+= Cheatsheets
+
+[[SentimentJob]]
+== SentimentJob
+
+++++
+++++
+'''
+
+[cols=">25%,^25%,50%"]
+[frame="topbot"]
+|===
+^|Name | Type ^| Description
+|[[entityLinkingResponse]]`entityLinkingResponse`|`Json object`|-
+|[[failed]]`failed`|`Number (int)`|-
+|[[jobId]]`jobId`|`String`|-
+|[[newsSearchResponse]]`newsSearchResponse`|`Json object`|-
+|[[query]]`query`|`String`|-
+|[[result]]`result`|`Json object`|-
+|[[sentimentResponse]]`sentimentResponse`|`Json object`|-
+|[[state]]`state`|`link:enums.html#State[State]`|-
+|[[timeout]]`timeout`|`Number (long)`|-
+|===
+

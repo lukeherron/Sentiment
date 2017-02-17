@@ -1,0 +1,361 @@
+{
+  "_type": "News",
+  "readLink": "https://api.cognitive.microsoft.com/api/v5/news/search?q=apple",
+  "totalEstimatedMatches": 245000,
+  "value": [
+    {
+      "name": "Apple won't do what's needed to save the iPad",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=QypUgyx5qZ8mV-fYWJISGvj_hTWHqNH7DKDWi48jlnc&v=1&r=http%3a%2f%2fwww.zdnet.com%2farticle%2fapple-wont-do-whats-needed-to-save-the-ipad%2f&p=DevEx,5025.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.BEB46DEB44E682F2CF37F6F2F185083E&pid=News",
+          "width": 700,
+          "height": 393
+        }
+      },
+      "description": "iPad sales are awful. Truly awful, and while CEO Tim Cook might be bullish about the tablet's future, Apple desperately needs to do something to turn sales around if it's going to come off life support. Must read: Does your iPhone have a battery drain problem?",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/9f5500d5-a48c-dc47-2c90-f8cc8558d9d2",
+          "name": "iPad"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "ZDNet"
+        }
+      ],
+      "datePublished": "2017-02-10T15:15:00",
+      "video": {
+        "name": "Apple won't do what's needed to save the iPad",
+        "thumbnailUrl": "https://www.bing.com/th?id=ON.5DF068F6BB6F3EC17D95BBF7704C090E&pid=News",
+        "allowHttpsEmbed": true,
+        "thumbnail": {
+          "width": 480,
+          "height": 360
+        }
+      },
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple’s hot new W1-equipped BeatsX wireless earbuds have finally been released",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=m1AUSFFeH3iXq0nUkr6RK0C93sG2ZWdJKJq2BqYlYcA&v=1&r=http%3a%2f%2fbgr.com%2f2017%2f02%2f10%2fbeatsx-release-date-now-available%2f&p=DevEx,5027.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.FDE3D87E423AC2C97064515E9D385698&pid=News",
+          "width": 700,
+          "height": 466
+        }
+      },
+      "description": "Last night, there were only three pairs of headphones on the planet equipped with Apple’s W1 wireless chip. The most talked-about W1 headphones are obviously Apple’s truly wireless earbuds, the AirPods, which are still next to impossible to find unless ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/74aa5012-510a-f5fb-6b80-bdb48e9f088c",
+          "name": "Bulgaria"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/2246ccaa-87ee-c4ec-78ee-d1709a2c3194",
+          "name": "W postcode area"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "BGR"
+        }
+      ],
+      "datePublished": "2017-02-10T15:22:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple’s Tim Cook: ‘The U.K. will be just fine’ outside the EU",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=LlaxICNdmhgyksTu3eAMDzA1A-dWLBTJGJrcWXmoLLM&v=1&r=http%3a%2f%2fwww.marketwatch.com%2fstory%2fapples-tim-cook-the-uk-will-be-just-fine-outside-the-eu-2017-02-10&p=DevEx,5029.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.BC4FEC79280F30CFCF8A59E223F3F732&pid=News",
+          "width": 700,
+          "height": 393
+        }
+      },
+      "description": "Fear not, United Kingdom. The head of the biggest technology company in the world has your back. “We’re a big believer in the U.K. The U.K. will be just fine.” — Tim Cook, CEO of Apple Apple’s AAPL, +0.72% CEO Tim Cook recently recounted what he ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/bf1be0f9-6a6d-e88c-977e-df90b7e28cf5",
+          "name": "Tim Cook"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/b1a5155a-6bb2-4646-8f7c-3e6b3a53c831",
+          "name": "United Kingdom"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/3b8ddb1a-cf19-ee77-560d-9dfa00ddf070",
+          "name": "European Union"
+        }
+      ],
+      "mentions": [
+        {
+          "name": "Tim Cook"
+        },
+        {
+          "name": "United Kingdom"
+        },
+        {
+          "name": "European Union"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "Market Watch"
+        }
+      ],
+      "datePublished": "2017-02-10T08:54:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple Watch had massive holiday quarter; took nearly 80% share of total smartwatch revenue",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=eizSteIKFDHNcgtb969s0BtLQziogaV3iYR8j-DjNQ8&v=1&r=http%3a%2f%2fmacdailynews.com%2f2017%2f02%2f10%2fapple-watch-had-massive-holiday-quarter-took-nearly-80-share-of-total-smartwatch-revenue%2f&p=DevEx,5031.1",
+      "description": "Apple set a new quarterly shipment record in Q4 2016, contributing to total smartwatch shipments exceeding 9 million units. This global market figure was largely driven by Apple’s 6 million shipments, representing year-on-year growth of 12%. It was the ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/31f86266-9b99-01f4-482b-184767c1f6ca",
+          "name": "Welcome Home"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/2d9e5445-0e5e-5269-9795-b287f8be11ce",
+          "name": "Revenue"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "Macdaily News"
+        }
+      ],
+      "datePublished": "2017-02-10T15:32:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple's iCloud saved deleted browser records, security company finds",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=AUyyMHSYsjZOu0-6c5LEKsXDUeUkI5Ua7nkpHE6zctU&v=1&r=http%3a%2f%2fwww.pcworld.com%2farticle%2f3168462%2fsecurity%2fapples-icloud-saved-deleted-browser-records-security-company-finds.html&p=DevEx,5033.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.399AF61609E67133EA0ED4EFF356C6C5&pid=News",
+          "width": 700,
+          "height": 477
+        }
+      },
+      "description": "Apple’s iCloud appears to have been holding on to users’ deleted internet browsing histories, including records over a year old. Moscow-based forensics firm Elcomsoft noticed it was able to pull supposedly deleted Safari browser histories from iCloud ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/e304a425-7bde-24eb-d29c-98e37590a24c",
+          "name": "iCloud"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/54e7c17e-cba8-736f-ea5f-5e2c6ae11a26",
+          "name": "File deletion"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "PC World"
+        }
+      ],
+      "datePublished": "2017-02-10T15:07:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple CEO Tim Cook: Fake news 'is one of today’s chief problems'",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=PEmpnZ827bMH1gSalrbCw7L0fwYMNLTTpflrPbp_PVQ&v=1&r=http%3a%2f%2fwww.businessinsider.com%2fapple-ceo-tim-cook-fake-news-todays-chief-problems-consumer-tools-london-2017-2&p=DevEx,5035.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.636C0EBD94EA4BED92457EBC8583E0A8&pid=News",
+          "width": 700,
+          "height": 525
+        }
+      },
+      "description": "Apple CEO Tim Cook has said in a new interview that the spread of fake news online \"is one of today’s chief problems.\" Cook told Good Morning Britain that \"we have to give the consumer tools to help with this and we've got to filter out part of it before ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/bf1be0f9-6a6d-e88c-977e-df90b7e28cf5",
+          "name": "Tim Cook"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/7c2833bf-8331-ad1b-f3cc-7dbcf079b47a",
+          "name": "News satire"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "businessinsider.com"
+        }
+      ],
+      "datePublished": "2017-02-10T05:42:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Why Apple CEO Tim Cook visited London startup ustwo Games",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=-jeZzfFQhUYlbU2-6Wzn6uQ9Y8SzWUl60At8XHPQMn0&v=1&r=http%3a%2f%2fwww.businessinsider.com%2fapple-ceo-tim-cook-meets-ustwo-startup-2017-2&p=DevEx,5037.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.659615E4C0D865F9494F12A272F11EA4&pid=News",
+          "width": 700,
+          "height": 525
+        }
+      },
+      "description": "Tim Cook, the CEO of Apple, continued his tour of Europe on Thursday as he visited UK Prime Minister Theresa May and a school in North London. He also visited one lucky London startup: ustwo Games. Based in London's Oval neighbourhood, ustwo Games is the ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/bf1be0f9-6a6d-e88c-977e-df90b7e28cf5",
+          "name": "Tim Cook"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/8e0ba7b6-4225-fa8a-6369-1b5294e602a5",
+          "name": "London"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "businessinsider.com"
+        }
+      ],
+      "datePublished": "2017-02-10T06:22:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "How Apple can make music sound sweeter",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=yVbyJTtA_x6HkAm5boTaQSoIvNKarqmeyCnHdD8Vkx4&v=1&r=http%3a%2f%2fwww.macworld.com%2farticle%2f3168508%2fos-x%2fhow-apple-can-make-music-sound-sweeter.html&p=DevEx,5039.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.B800B97C00BF30C09FFEFAF621ECBDB8&pid=News",
+          "width": 116,
+          "height": 116
+        }
+      },
+      "description": "We’ve heard the refrain over and over again: music is in Apple’s DNA. It’s been uttered regularly by Tim Cook, and even if Steve Jobs didn’t put it in exactly those words, it was clear from the direction he steered Apple—introducing products like ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/709da5d5-eeca-ebaa-e156-31db19d05fee",
+          "name": "Macworld"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "Macworld Mac Central"
+        }
+      ],
+      "datePublished": "2017-02-10T13:25:00",
+      "category": "ScienceAndTechnology"
+    },
+    {
+      "name": "Apple device users have higher credit scores than Android users, says lender",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=yeY06_ZTp2Yhh6I6hBRgsUd7_ke1hJ5NpccGUgvSdEg&v=1&r=http%3a%2f%2fwww.wlwt.com%2farticle%2fapple-device-users-have-higher-credit-scores-than-android-users-says-lender%2f8701787&p=DevEx,5041.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.42EADAC2BB2D750D2E6226EC351190B3&pid=News",
+          "width": 640,
+          "height": 360
+        }
+      },
+      "description": "Apple device users have higher credit scores on average than Android device users, according to an analysis by LendingTree, an online service that connects consumers with banks. The results were collected from more than two million purchase and personal ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/c70c3228-2a69-0c6c-89b3-0327093fe083",
+          "name": "Credit score"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/cd479382-d340-5848-c99d-ed371b00b752",
+          "name": "Android"
+        }
+      ],
+      "mentions": [
+        {
+          "name": "Apple Inc."
+        },
+        {
+          "name": "Credit score"
+        },
+        {
+          "name": "Android"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "WLWT 5"
+        }
+      ],
+      "datePublished": "2017-02-10T15:28:00"
+    },
+    {
+      "name": "Macquarie, ING join Apple Pay in Australia in challenge to Big Four",
+      "url": "http://www.bing.com/cr?IG=C9E1640C9494406E8F74F719A7A77BA6&CID=2F5109EC72CF65AF035F03C973FE64C9&rd=1&h=NyDx32L2h-bmduXkxp9tHxgeMQCbJHHrDJHGwRIOluM&v=1&r=http%3a%2f%2fwww.reuters.com%2farticle%2fus-apple-australia-banks-idUSKBN15P02M&p=DevEx,5043.1",
+      "image": {
+        "thumbnail": {
+          "contentUrl": "https://www.bing.com/th?id=ON.BC809E8E1C60AC33D12E32DAD08911C6&pid=News",
+          "width": 700,
+          "height": 492
+        }
+      },
+      "description": "SYDNEY Macquarie Group and ING Direct on Friday said they would start using Apple Inc's mobile payment service in Australia this month, hoping to snatch market share from the major retail banks through digital technology. So far only one of the major banks ...",
+      "about": [
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/06de2191-243d-a83f-6990-2eb1c7f3382a",
+          "name": "Australia"
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+          "name": "Apple Inc."
+        },
+        {
+          "readLink": "https://api.cognitive.microsoft.com/api/v5/entities/9f417f89-9a37-e0d0-912e-99dccfb8982d",
+          "name": "Reuters"
+        }
+      ],
+      "provider": [
+        {
+          "_type": "Organization",
+          "name": "Reuters"
+        }
+      ],
+      "datePublished": "2017-02-09T19:31:00"
+    }
+  ]
+}

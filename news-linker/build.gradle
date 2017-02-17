@@ -1,0 +1,59 @@
+group 'gofish'
+version '1.0-SNAPSHOT'
+
+dependencies {
+    compile (project(':common-http'))
+}
+
+def mainVerticleName = 'com.gofish.sentiment.newslinker.NewsLinkerVerticle'
+def watchForChange = 'src/**/*'
+def doOnChange = './gradlew classes'
+if (System.getProperty("os.name").toLowerCase().contains("windows")) {
+    doOnChange = '.\\gradlew classes'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
+shadowJar {
+    manifest {
+        //noinspection GroovyAssignabilityCheck
+        attributes ('Main-Class': 'io.vertx.core.Launcher', 'Main-Verticle': "${mainVerticleName}")
+    }
+}
+
+compileJava {
+    targetCompatibility = 1.8
+    sourceCompatibility = 1.8
+
+    dependsOn annotationProcessing
+}
+
+tasks.withType(FindBugs) {
+    classes = classes.filter {
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/rxjava').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/NewsLinkerServiceVertxProxyHandler.class').path) &&
+        !it.path.contains(new File('com/gofish/sentiment/newslinker/NewsLinkerServiceVertxEBProxy.class').path)
+    }
+
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+run {
+    args = [
+            'run', "$mainVerticleName",
+            "--redeploy=$watchForChange",
+            "--launcher-class=$mainClassName",
+            "--on-redeploy=$doOnChange",
+            '-ha',
+            '-conf src/main/resources/vertx-config.json'
+    ]
+}
