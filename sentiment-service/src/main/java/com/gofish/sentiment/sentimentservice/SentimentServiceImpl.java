@@ -140,52 +140,6 @@ public class SentimentServiceImpl implements SentimentService {
         return addNewQueryFuture;
     }
 
-//    private Future<JsonObject> analyseSentiment(String query) {
-//        final Future<JsonObject> newsAnalyserFuture = Future.future();
-//        final Future<JsonObject> newsLinkerFuture = Future.future();
-//        final CompositeFuture analyseSentimentFuture = CompositeFuture.join(newsAnalyserFuture, newsLinkerFuture);
-//
-//        final SentimentJob job = new SentimentJob(query);
-//
-//        // Set up a unique listener to receive the results of a processed job. There are three specific job queues
-//        // (although each are split into pending/working), but we only need to listen for two: news-analyser and
-//        // news-linker, as both of these queues work on the results of the news-crawler job queue, i.e. we know we can't
-//        // receive the final result from the news-crawler, so we exclude listening for its results.
-//        final MessageConsumer<JsonObject> analyseConsumer = vertx.eventBus().localConsumer("news-analyser:" + job.getJobId(), messageHandler -> {
-//            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
-//            newsAnalyserFuture.complete(result);
-//        });
-//
-//        final MessageConsumer<JsonObject> linkerConsumer = vertx.eventBus().localConsumer("news-linker:" + job.getJobId(), messageHandler -> {
-//            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
-//            newsLinkerFuture.complete(result);
-//        });
-//
-//        analyseConsumer.exceptionHandler(newsAnalyserFuture::fail);
-//        linkerConsumer.exceptionHandler(newsLinkerFuture::fail);
-//        analyseConsumer.endHandler(endHandler -> analyseConsumer.unregister());
-//        linkerConsumer.endHandler(endHandler -> linkerConsumer.unregister());
-//
-//        // With the listeners ready, we can push the job onto the queue
-//        redis.lpush(SentimentService.NEWS_CRAWLER_PENDING_QUEUE, job.toJson().encode(), pushHandler -> {
-//            if (pushHandler.succeeded()) {
-//                LOG.info("Job added to queue: " + pushHandler.result());
-//            }
-//            else if (!analyseSentimentFuture.failed()) {
-//                analyseSentimentFuture.fail(pushHandler.cause());
-//            }
-//        });
-//
-//        return analyseSentimentFuture
-//                .map(future -> mergeFutureResults(newsAnalyserFuture, newsLinkerFuture))
-//                .compose(json -> saveAnalysis(query, json.getJsonArray("value")))
-//                .compose(json -> getStorageService().compose(storageService -> {
-//                    final Future<JsonObject> sentimentResultsFuture = Future.future();
-//                    storageService.getSentimentResults(query, sentimentResultsFuture.completer());
-//                    return sentimentResultsFuture;
-//                }));
-//    }
-
     private JsonObject mergeFutureResults(Future<JsonObject> newsAnalyserFuture, Future<JsonObject> newsLinkerFuture) {
         final JsonObject analysisJson = newsAnalyserFuture.result();
         final JsonObject linkingJson = newsLinkerFuture.result();
