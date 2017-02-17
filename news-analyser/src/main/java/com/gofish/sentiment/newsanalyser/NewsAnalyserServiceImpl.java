@@ -34,6 +34,7 @@ public class NewsAnalyserServiceImpl implements NewsAnalyserService {
                 vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, handleReply(resultHandler));
             }
             else {
+                LOG.error(completionHandler.cause().getMessage(), completionHandler.cause());
                 resultHandler.handle(Future.failedFuture(completionHandler.cause()));
             }
         });
@@ -46,6 +47,7 @@ public class NewsAnalyserServiceImpl implements NewsAnalyserService {
                 resultHandler.handle(Future.succeededFuture(result));
             }
             else {
+                LOG.error(replyHandler.cause().getMessage(), replyHandler.cause());
                 resultHandler.handle(Future.failedFuture(replyHandler.cause()));
             }
         };

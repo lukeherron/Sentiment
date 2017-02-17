@@ -56,9 +56,11 @@ public class StorageService {
    * Create a mongo collection using the specified collection name.
    * @param collectionName the name of the collection to create
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) { 
+  public StorageService createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler) { 
     delegate.createCollection(collectionName, resultHandler);
+    return this;
   }
 
   /**
@@ -78,9 +80,11 @@ public class StorageService {
    * @param collectionName the name of the collection that the index will be created for
    * @param collectionIndex json object mapping the fields that will make up the index
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) { 
+  public StorageService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler) { 
     delegate.createIndex(collectionName, collectionIndex, resultHandler);
+    return this;
   }
 
   /**
@@ -99,9 +103,11 @@ public class StorageService {
   /**
    * Retrieves a list of all current collections in mongo storage
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void getCollections(Handler<AsyncResult<JsonArray>> resultHandler) { 
+  public StorageService getCollections(Handler<AsyncResult<JsonArray>> resultHandler) { 
     delegate.getCollections(resultHandler);
+    return this;
   }
 
   /**
@@ -119,9 +125,11 @@ public class StorageService {
    * returned sentiment value will be relevant to the query that is being searched.
    * @param collectionName the name of the collection that sentiment results will be retrieved from
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) { 
+  public StorageService getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler) { 
     delegate.getSentimentResults(collectionName, resultHandler);
+    return this;
   }
 
   /**
@@ -140,9 +148,11 @@ public class StorageService {
    * Checks if the specified collection is currently contained in mongo storage.
    * @param collectionName the name of the collection that sentiment results will be retrieved from
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) { 
+  public StorageService hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) { 
     delegate.hasCollection(collectionName, resultHandler);
+    return this;
   }
 
   /**
@@ -161,9 +171,11 @@ public class StorageService {
    * @param indexName the name of the index to search for
    * @param collectionName the name of the collection to search
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) { 
+  public StorageService isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler) { 
     delegate.isIndexPresent(indexName, collectionName, resultHandler);
+    return this;
   }
 
   /**
@@ -183,9 +195,11 @@ public class StorageService {
    * @param collectionName the name of the collection to store the articles in
    * @param articles json object containing a list of articles to store
    * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
    */
-  public void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) { 
+  public StorageService saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler) { 
     delegate.saveArticles(collectionName, articles, resultHandler);
+    return this;
   }
 
   /**

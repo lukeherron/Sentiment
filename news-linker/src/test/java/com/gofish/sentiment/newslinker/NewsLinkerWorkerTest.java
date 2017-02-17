@@ -57,12 +57,16 @@ public class NewsLinkerWorkerTest {
     @Test
     public void testNewsLinkerReturnsExpectedJsonResultOnSuccess(TestContext context) {
         final JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("name", "test article")
+                .put("description", "test description")
                 .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
 
         final JsonObject entityLinkResponse = new JsonObject()
                 .put("entities", new JsonArray().add(new JsonObject().put("name", "entity2 test")));
 
         final JsonObject expectedTestResult = new JsonObject()
+                .put("name", "test article")
+                .put("description", "test description")
                 .put("about", new JsonArray()
                         .add(new JsonObject().put("name", "entity1 test"))
                         .add(new JsonObject().put("name", "entity2 test").put("readLink", "")));
@@ -74,21 +78,31 @@ public class NewsLinkerWorkerTest {
             // JsonObject (a 'readLink' entry is also added in prod, and will be seen in this test)
             JsonObject response = (JsonObject) result.body();
             context.assertNotNull(response);
-            context.assertEquals( expectedTestResult.encode(), response.encode());
+
+            context.assertEquals(expectedTestResult.getString("name"), response.getString("name"));
+            context.assertEquals(expectedTestResult.getString("description"), response.getString("description"));
+
+            JsonArray expectedAbout = expectedTestResult.getJsonArray("about");
+            JsonArray responseAbout = response.getJsonArray("about");
+
+            for (int i = 0; i < 2; i++) {
+                context.assertEquals(expectedAbout.getJsonObject(i).getString("name"), responseAbout.getJsonObject(i).getString("name"));
+            }
         }));
     }
 
     @Test
     public void testNewsLinkerReturnsExpectedJsonResultOnFailure(TestContext context) {
         final JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("name", "test article")
+                .put("description", "test description")
                 .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
 
-        final JsonObject entityLinkResponse = new JsonObject()
-                .put("entities", new JsonArray().add(new JsonObject().put("name", "entity2 test")))
+        final JsonObject errorResponse = new JsonObject().put("error", new JsonObject()
                 .put("statusCode", 429)
-                .put("message", "Rate limit is exceeded: 5");
+                .put("message", "Rate limit exceeded. Try again in 1 seconds"));
 
-        mockBodyHandler(entityLinkResponse);
+        mockBodyHandler(errorResponse);
 
         // Change the reply timeout before sending the message. If we fail to do this, then the default timeout will
         // be observed (usually 30 seconds), slowing down the unit test considerably
@@ -117,6 +131,8 @@ public class NewsLinkerWorkerTest {
     @Test
     public void testNewsLinkerSucceedsWithNoLinkingIfInvalidResponseReceived(TestContext context) {
         final JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("name", "test article")
+                .put("description", "test description")
                 .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
 
         final JsonObject invalidEntityLinkResponse = new JsonObject()

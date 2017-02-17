@@ -1,5 +1,6 @@
 package com.gofish.sentiment.api;
 
+import com.gofish.sentiment.sentimentservice.SentimentService;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -48,9 +49,17 @@ public class APIGatewayVerticle extends AbstractVerticle {
 
         // Setup a failure handler
         router.route("/*").failureHandler(failureHandler -> {
-            int statusCode = failureHandler.statusCode();
             HttpServerResponse response = failureHandler.response();
-            response.setStatusCode(statusCode).end("Sorry! Not today");
+
+            LOG.error(failureHandler.failure());
+
+            int statusCode = failureHandler.statusCode();
+            if (statusCode < 0) {
+                response.end("Unknown failure occurred");
+            }
+            else {
+                response.setStatusCode(statusCode).end("Sorry! Not today");
+            }
         });
 
         // Launch server and start listening

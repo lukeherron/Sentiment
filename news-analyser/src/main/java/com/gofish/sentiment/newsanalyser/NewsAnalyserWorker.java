@@ -1,5 +1,6 @@
 package com.gofish.sentiment.newsanalyser;
 
+import com.gofish.sentiment.common.http.ResponseHandler;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
@@ -7,18 +8,15 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
-import io.vertx.rxjava.core.http.HttpClientResponse;
 import rx.Observable;
 
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author Luke Herron
@@ -67,69 +65,37 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                                 .put("id", UUID.randomUUID().toString())
                                 .put("text", analysisText)));
 
-                LOG.info("Calling Text Analytics API");
+                final Buffer chunk = Buffer.buffer(requestData.encode());
 
                 HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
                         .putHeader("Content-Type", "application/json; charset=UTF-8")
-                        .putHeader("Content-Length", String.valueOf(requestData.encode().length()))
+                        .putHeader("Content-Length", String.valueOf(chunk.length()))
                         .putHeader("Ocp-Apim-Subscription-Key", apiKey);
-                
-                analyseNewsArticle(request)
+
+                LOG.info("Calling Text Analytics API");
+
+                request.toObservable()
+                        .flatMap(ResponseHandler::handle)
+                        .doOnNext(result -> LOG.debug(result.encodePrettily()))
                         .flatMap(result -> this.addSentimentResults(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> request.end()
+                                () -> {
+                                    // request.end() must occur inside onComplete to avoid 'Request already complete'
+                                    // exceptions which may occure if initial request fails and a retry is necessary
+                                    request.end();
+                                    LOG.info("Finished News Analysis");
+                                }
                         );
 
-                request.write(requestData.encode());
+                request.write(chunk);
             }
             catch (Throwable t) {
+                LOG.error(t.getMessage(), t.getCause());
                 messageHandler.fail(2, "Invalid Request");
             }
         });
-    }
-
-    @Override
-    public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
-        );
-    }
-
-    private Observable<JsonObject> analyseNewsArticle(HttpClientRequest request) {
-        return request.toObservable()
-                .flatMap(this::bodyHandlerObservable)
-                .switchMap(json -> {
-                    switch(("" + json.getInteger("statusCode", 0)).charAt(0)) {
-                        case '4':
-                        case '5':
-                            return Observable.error(new Throwable(json.getString("message")));
-                        default:
-                            return Observable.just(json);
-                    }
-                })
-                .retryWhen(errors -> errors.flatMap(error -> {
-                    int delay = 2;
-                    if (error.getMessage().contains("Rate limit is exceeded")) {
-                        delay = Integer.parseInt(error.getMessage().replaceAll("[^\\d]", ""));
-                    }
-
-                    return Observable.timer(delay, TimeUnit.SECONDS);
-                }));
-    }
-
-    private Observable<JsonObject> bodyHandlerObservable(HttpClientResponse response) {
-        ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-
-        response.bodyHandler(buffer -> {
-            observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject()));
-        });
-
-        return observable;
     }
 
     private Observable<JsonObject> addSentimentResults(JsonObject article, JsonObject analysisResponse) {
@@ -151,5 +117,15 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
+    }
+
+    @Override
+    public void stop(Future<Void> stopFuture) throws Exception {
+        httpClient.close();
+        messageConsumer.unregisterObservable().subscribe(
+                stopFuture::complete,
+                stopFuture::fail,
+                () -> LOG.info("NewsAnalyserWorker messageConsumer unregistered")
+        );
     }
 }

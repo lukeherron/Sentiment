@@ -1,0 +1,80 @@
+version: '2'
+
+services:
+  mongo:
+    image: mongo
+
+  redis:
+    image: redis
+
+  api-gateway:
+    image: java:alpine
+    volumes:
+      - ./api-gateway/build/libs/api-gateway-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./api-gateway/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./api-gateway/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - sentiment-service
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties
+    ports:
+      - "80:80"
+
+  news-crawler:
+    image: java:alpine
+    volumes:
+      - ./news-crawler/build/libs/news-crawler-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./news-crawler/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./news-crawler/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties
+
+  news-linker:
+    image: java:alpine
+    volumes:
+      - ./news-linker/build/libs/news-linker-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./news-linker/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./news-linker/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties
+
+  news-analyser:
+    image: java:alpine
+    volumes:
+      - ./news-analyser/build/libs/news-analyser-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./news-analyser/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./news-analyser/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties
+
+  sentiment-service:
+    image: java:alpine
+    volumes:
+      - ./sentiment-service/build/libs/sentiment-service-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./sentiment-service/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./sentiment-service/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - redis
+      - storage
+      - news-crawler
+      - news-linker
+      - news-analyser
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties
+
+  storage:
+    image: java:alpine
+    volumes:
+      - ./storage/build/libs/storage-1.0-SNAPSHOT.jar:/var/app.jar:Z
+      - ./storage/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
+      - ./storage/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
+    command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - mongo
+    environment:
+      - VERTX_JUL_CONFIG=/var/logging.properties

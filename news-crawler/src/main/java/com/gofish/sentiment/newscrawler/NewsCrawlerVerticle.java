@@ -20,8 +20,6 @@ public class NewsCrawlerVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerVerticle.class);
 
-    private JsonObject config;
-    private NewsCrawlerService newsCrawlerService;
     private MessageConsumer<JsonObject> messageConsumer;
     private ServiceDiscovery serviceDiscovery;
     private Record record;
@@ -30,10 +28,10 @@ public class NewsCrawlerVerticle extends AbstractVerticle {
     public void start(Future<Void> startFuture) throws Exception {
         LOG.info("Bringing up NewsCrawlerVerticle");
 
-        this.config = Optional.ofNullable(config())
+        JsonObject config = Optional.ofNullable(config())
                 .orElseThrow(() -> new RuntimeException("Could not load crawler configuration"));
 
-        newsCrawlerService = NewsCrawlerService.create(vertx, config);
+        NewsCrawlerService newsCrawlerService = NewsCrawlerService.create(vertx, config);
         messageConsumer = ProxyHelper.registerService(NewsCrawlerService.class, vertx, newsCrawlerService, NewsCrawlerService.ADDRESS);
 
         serviceDiscovery = ServiceDiscovery.create(vertx);
@@ -64,7 +62,7 @@ public class NewsCrawlerVerticle extends AbstractVerticle {
                 stopFuture.complete();
             }
             else {
-                stopFuture.failed();
+                stopFuture.fail(v.cause());
             }
         });
     }

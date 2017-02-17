@@ -47,7 +47,6 @@ public class NewsCrawlerWorkerTest {
         httpClientResponse = mock(HttpClientResponse.class);
 
         URL responseURL = getClass().getClassLoader().getResource("data/NewsCrawlerResponse.json");
-        context.assertNotNull(responseURL);
         assert responseURL != null;
         newsCrawlerResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
 
@@ -85,9 +84,7 @@ public class NewsCrawlerWorkerTest {
         // Change the reply timeout before sending the message. If we fail to do this, then the default timeout will
         // be observed (usually 30 seconds), slowing down the unit test considerably
         DeliveryOptions deliveryOptions = new DeliveryOptions().setSendTimeout(500);
-        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure(result -> {
-            System.out.println(result.getMessage());
-        }));
+        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
     }
 
     @Test

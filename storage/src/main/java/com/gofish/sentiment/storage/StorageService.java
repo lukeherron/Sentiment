@@ -1,5 +1,6 @@
 package com.gofish.sentiment.storage;
 
+import io.vertx.codegen.annotations.Fluent;
 import io.vertx.codegen.annotations.ProxyGen;
 import io.vertx.codegen.annotations.VertxGen;
 import io.vertx.core.AsyncResult;
@@ -33,7 +34,8 @@ public interface StorageService {
      * @param collectionName the name of the collection to create
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler);
+    @Fluent
+    StorageService createCollection(String collectionName, Handler<AsyncResult<Void>> resultHandler);
 
     /**
      * Create a mongo index for the specified collection name. This is necessary to avoid adding duplicate documents
@@ -43,14 +45,16 @@ public interface StorageService {
      * @param collectionIndex json object mapping the fields that will make up the index
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler);
+    @Fluent
+    StorageService createIndex(String collectionName, JsonObject collectionIndex, Handler<AsyncResult<Void>> resultHandler);
 
     /**
      * Retrieves a list of all current collections in mongo storage
      *
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void getCollections(Handler<AsyncResult<JsonArray>> resultHandler);
+    @Fluent
+    StorageService getCollections(Handler<AsyncResult<JsonArray>> resultHandler);
 
     /**
      * Retrieves the sentiment results for a specific collection name. A collection name maps to an API query, so any
@@ -59,7 +63,8 @@ public interface StorageService {
      * @param collectionName the name of the collection that sentiment results will be retrieved from
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler);
+    @Fluent
+    StorageService getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler);
 
     /**
      * Checks if the specified collection is currently contained in mongo storage.
@@ -67,7 +72,8 @@ public interface StorageService {
      * @param collectionName the name of the collection that sentiment results will be retrieved from
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
+    @Fluent
+    StorageService hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
 
     /**
      * Checks if the specified index is already defined for the specified collection name
@@ -76,7 +82,8 @@ public interface StorageService {
      * @param collectionName the name of the collection to search
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
+    @Fluent
+    StorageService isIndexPresent(String indexName, String collectionName, Handler<AsyncResult<Boolean>> resultHandler);
 
     /**
      * Stores the provided articles in the specified collection name.
@@ -85,5 +92,6 @@ public interface StorageService {
      * @param articles json object containing a list of articles to store
      * @param resultHandler the result will be returned asynchronously in this handler
      */
-    void saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler);
+    @Fluent
+    StorageService saveArticles(String collectionName, JsonArray articles, Handler<AsyncResult<JsonObject>> resultHandler);
 }

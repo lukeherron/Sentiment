@@ -37,6 +37,7 @@ var StorageService = function(j_val) {
    @public
    @param collectionName {string} the name of the collection to create 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.createCollection = function(collectionName, resultHandler) {
     var __args = arguments;
@@ -48,6 +49,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -59,6 +61,7 @@ var StorageService = function(j_val) {
    @param collectionName {string} the name of the collection that the index will be created for 
    @param collectionIndex {Object} json object mapping the fields that will make up the index 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.createIndex = function(collectionName, collectionIndex, resultHandler) {
     var __args = arguments;
@@ -70,6 +73,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -78,6 +82,7 @@ var StorageService = function(j_val) {
 
    @public
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.getCollections = function(resultHandler) {
     var __args = arguments;
@@ -89,6 +94,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -99,6 +105,7 @@ var StorageService = function(j_val) {
    @public
    @param collectionName {string} the name of the collection that sentiment results will be retrieved from 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.getSentimentResults = function(collectionName, resultHandler) {
     var __args = arguments;
@@ -110,6 +117,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -119,6 +127,7 @@ var StorageService = function(j_val) {
    @public
    @param collectionName {string} the name of the collection that sentiment results will be retrieved from 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.hasCollection = function(collectionName, resultHandler) {
     var __args = arguments;
@@ -130,6 +139,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -140,6 +150,7 @@ var StorageService = function(j_val) {
    @param indexName {string} the name of the index to search for 
    @param collectionName {string} the name of the collection to search 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.isIndexPresent = function(indexName, collectionName, resultHandler) {
     var __args = arguments;
@@ -151,6 +162,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -161,6 +173,7 @@ var StorageService = function(j_val) {
    @param collectionName {string} the name of the collection to store the articles in 
    @param articles {todo} json object containing a list of articles to store 
    @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
    */
   this.saveArticles = function(collectionName, articles, resultHandler) {
     var __args = arguments;
@@ -172,6 +185,7 @@ var StorageService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+      return that;
     } else throw new TypeError('function invoked with invalid arguments');
   };
 

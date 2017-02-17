@@ -16,10 +16,18 @@ if (System.getProperty("os.name").toLowerCase().contains("windows")) {
     doOnChange = '.\\gradlew classes'
 }
 
-jar {
+sourceSets {
+    main {
+        java {
+            srcDirs += 'src/main/generated'
+        }
+    }
+}
+
+shadowJar {
     manifest {
-        attributes 'Main-Class': 'io.vertx.core.Launcher'
-        attributes 'Main-Verticle': "$mainVerticleName"
+        //noinspection GroovyAssignabilityCheck
+        attributes ('Main-Class': 'io.vertx.core.Launcher', 'Main-Verticle': "${mainVerticleName}")
     }
 }
 

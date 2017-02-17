@@ -159,7 +159,7 @@ public class StorageWorkerTest {
 
     @Test
     public void testGetSentimentResultsRepliesWithJsonObject(TestContext context) {
-        when(mongo.findBatchObservable(anyString(), any(JsonObject.class))).thenReturn(Observable.just(new JsonObject()));
+        when(mongo.runCommandObservable(anyString(), any(JsonObject.class))).thenReturn(Observable.just(new JsonObject()));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getSentimentResults");
