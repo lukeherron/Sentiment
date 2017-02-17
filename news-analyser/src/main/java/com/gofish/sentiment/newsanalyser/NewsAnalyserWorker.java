@@ -76,6 +76,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
 
                 request.toObservable()
                         .flatMap(ResponseHandler::handle)
+                        .doOnNext(result -> LOG.debug(result.encodePrettily()))
                         .flatMap(result -> this.addSentimentResults(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
@@ -91,7 +92,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                 request.write(chunk);
             }
             catch (Throwable t) {
-                t.printStackTrace();
+                LOG.error(t.getMessage(), t.getCause());
                 messageHandler.fail(2, "Invalid Request");
             }
         });

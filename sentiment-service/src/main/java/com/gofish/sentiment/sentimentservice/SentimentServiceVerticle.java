@@ -63,7 +63,8 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         // generating jobs and putting them into the queues
         CompositeFuture.all(publishFuture, jobQueueFuture).setHandler(resultHandler -> {
             if (resultHandler.succeeded()) {
-                deployQueueWorkers().compose(v -> deployTimedCrawler()).setHandler(startFuture.completer());
+                //deployQueueWorkers().compose(v -> deployTimedCrawler()).setHandler(startFuture.completer());
+                deployQueueWorkers().setHandler(startFuture.completer());
             }
             else {
                 LOG.error(resultHandler.cause());

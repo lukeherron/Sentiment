@@ -9,6 +9,7 @@ import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.http.HttpClientResponse;
 import rx.Observable;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -24,21 +25,27 @@ public class ResponseHandler {
         response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
 
         return observable.switchMap(json -> {
-            JsonObject error = json.getJsonObject("error");
+            JsonObject error = json.getJsonObject("error", new JsonObject());
+            Integer statusCode = Optional.ofNullable(error.getInteger("statusCode"))
+                    .orElseGet(() -> json.getInteger("statusCode"));
 
-            if (error == null) {
-                return Observable.just(json);
-            }
+            // status code can still be null, in which case we assign 0 which will invoke the default case of our switch
+            // statement, i.e. there is no error status, so simply return the response as is.
+            statusCode = Optional.ofNullable(statusCode).orElse(0);
 
-            switch(("" + error.getInteger("statusCode", 0)).charAt(0)) {
+            switch(("" + statusCode).charAt(0)) {
                 case '4':
                 case '5':
-                    return Observable.error(new Throwable(error.getString("message")));
+                    String message = Optional.ofNullable(error.getString("message"))
+                            .orElseGet(() -> json.getString("message"));
+                    Throwable throwable = new Throwable(String.join(": ", String.valueOf(statusCode), message));
+                    return Observable.error(throwable);
                 default:
                     return Observable.just(json);
             }
         }).retryWhen(errors -> errors.flatMap(error -> {
-            LOG.error(error.getCause());
+            // TODO: remove retrying from the response handler and allow SentimentJob to handle this responsibility
+            LOG.error(error.getMessage());
             int delay = DEFAULT_RETRY_DELAY;
 
             if (error.getMessage().contains("Rate limit is exceeded")) {

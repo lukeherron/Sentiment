@@ -76,7 +76,12 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 messageHandler.fail(1, "Invalid Query");
             }
 
-            final String requestUri = String.join("", urlPath, "?q=", query);
+            final String requestUri = String.join("", urlPath,
+                    "?q=", query,
+                    "&mkt=", "en-US",
+                    "&freshness=", freshness,
+                    "&count=", String.valueOf(resultCount));
+
             final Buffer chunk = Buffer.buffer();
             //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
 
@@ -88,6 +93,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
 
             request.toObservable()
                     .flatMap(ResponseHandler::handle)
+                    .doOnNext(result -> LOG.debug(result.encodePrettily()))
                     .map(responseParser::parse)
                     .subscribe(
                             result -> messageHandler.reply(result),

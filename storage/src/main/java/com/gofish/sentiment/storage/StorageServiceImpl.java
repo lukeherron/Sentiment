@@ -104,9 +104,6 @@ public class StorageServiceImpl implements StorageService {
         vertx.deployVerticle(StorageWorker.class.getName(), workerOptions, completionHandler -> {
             if (completionHandler.succeeded()) {
                 LOG.info(deliveryOptions.getHeaders().get("action") + ": " + message.encode());
-//                eventBus.sender(workerAddress, deliveryOptions)
-//                        .send(message, replyHandler)
-//                        .exceptionHandler(cause -> replyHandler.handle(Future.failedFuture(cause)));
                 vertx.eventBus().send(workerAddress, message, deliveryOptions, replyHandler);
             }
             else {
