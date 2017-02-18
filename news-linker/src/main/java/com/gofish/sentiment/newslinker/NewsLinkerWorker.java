@@ -109,8 +109,10 @@ public class NewsLinkerWorker  extends AbstractVerticle {
     }
 
     private Observable<JsonObject> addNewEntities(JsonObject article, JsonObject linkerResponse) {
+        JsonArray responseEntities = Optional.ofNullable(linkerResponse.getJsonArray("entities"))
+                .orElseThrow(() -> new RuntimeException(linkerResponse.encode()));
+
         JsonArray articleEntities = article.getJsonArray("about", new JsonArray());
-        JsonArray responseEntities = linkerResponse.getJsonArray("entities", new JsonArray());
 
         // Add any entities to articleEntities if they can only be found in responseEntities
         responseEntities.stream()

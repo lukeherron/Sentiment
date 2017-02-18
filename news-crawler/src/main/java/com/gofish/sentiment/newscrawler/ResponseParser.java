@@ -19,9 +19,8 @@ public class ResponseParser {
      */
     public JsonObject parse(JsonObject response) {
         if (!response.containsKey("value")) {
-            // We didn't receive the expected results, so don't bother parsing and simply return the response for the
-            // client to inspect.
-            return response;
+            // We didn't receive the expected results, throw an exception with the response as the exception message
+            throw new RuntimeException(response.encode());
         }
 
         JsonObject copy = response.copy(); // We will be changing the structure of the json, so make a copy to change.

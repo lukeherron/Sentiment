@@ -3,7 +3,8 @@ package com.gofish.sentiment.newscrawler;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -73,18 +74,18 @@ public class NewsCrawlerWorkerTest {
     }
 
     @Test
-    public void testNewsCrawlerReturnsExpectedJsonResultOnFailure(TestContext context) {
+    public void testNewsCrawlerReturnsExpectedJsonResultOnTooManyAttempts(TestContext context) {
         final JsonObject message = new JsonObject().put("query", "test");
-        final JsonObject errorResponse = new JsonObject().put("error", new JsonObject()
+        final JsonObject newsCrawlerError = new JsonObject().put("error", new JsonObject()
                 .put("statusCode", 429)
-                .put("message", "Rate limit exceeded. Try again in 1 seconds"));
+                .put("message", "Too many requests. Please try again in 2 seconds"));
 
-        mockBodyHandler(errorResponse);
+        mockBodyHandler(newsCrawlerError);
 
-        // Change the reply timeout before sending the message. If we fail to do this, then the default timeout will
-        // be observed (usually 30 seconds), slowing down the unit test considerably
-        DeliveryOptions deliveryOptions = new DeliveryOptions().setSendTimeout(500);
-        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure());
+        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
+            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
+            context.assertEquals(newsCrawlerError.encode(), cause.getMessage());
+        }));
     }
 
     @Test
