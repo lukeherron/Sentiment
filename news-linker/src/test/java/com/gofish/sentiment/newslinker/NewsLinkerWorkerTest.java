@@ -105,8 +105,6 @@ public class NewsLinkerWorkerTest {
 
         mockBodyHandler(newsLinkerError);
 
-        mockBodyHandler(newsLinkerError);
-
         vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
             context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
             context.assertEquals(newsLinkerError.encode(), cause.getMessage());
@@ -141,10 +139,9 @@ public class NewsLinkerWorkerTest {
 
         mockBodyHandler(invalidEntityLinkResponse);
 
-        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
-            // As the response did not contain any info that could be linked, we should be receiving back the original
-            // article contained inside the message, with no changes
-            context.assertEquals(message.getJsonObject("article"), result.body());
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
+            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
+            context.assertEquals(invalidEntityLinkResponse.encode(), cause.getMessage());
         }));
     }
 
