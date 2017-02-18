@@ -1,5 +1,6 @@
 package com.gofish.sentiment.sentimentservice;
 
+import com.gofish.sentiment.sentimentservice.job.SentimentJob;
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.MessageConsumer;
@@ -93,7 +94,7 @@ public class SentimentServiceImpl implements SentimentService {
         linkerConsumer.endHandler(endHandler -> linkerConsumer.unregister());
 
         // With the listeners ready, we can push the job onto the queue
-        redis.lpush(SentimentService.NEWS_CRAWLER_PENDING_QUEUE, job.toJson().encode(), pushHandler -> {
+        redis.lpush(PendingQueue.NEWS_CRAWLER.toString(), job.toJson().encode(), pushHandler -> {
             if (pushHandler.succeeded()) {
                 LOG.info("Job added to queue: " + pushHandler.result());
             }

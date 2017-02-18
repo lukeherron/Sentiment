@@ -17,6 +17,7 @@
 |[[newsSearchResponse]]`newsSearchResponse`|`Json object`|-
 |[[query]]`query`|`String`|-
 |[[result]]`result`|`Json object`|-
+|[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[sentimentResponse]]`sentimentResponse`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
 |[[timeout]]`timeout`|`Number (long)`|-

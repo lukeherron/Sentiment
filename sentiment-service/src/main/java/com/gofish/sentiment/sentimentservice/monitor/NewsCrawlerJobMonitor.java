@@ -1,17 +1,14 @@
 package com.gofish.sentiment.sentimentservice.monitor;
 
 import com.gofish.sentiment.newscrawler.NewsCrawlerService;
-import com.gofish.sentiment.sentimentservice.SentimentJob;
-import com.gofish.sentiment.sentimentservice.SentimentService;
-import io.vertx.core.Future;
+import com.gofish.sentiment.sentimentservice.PendingQueue;
+import com.gofish.sentiment.sentimentservice.WorkingQueue;
+import com.gofish.sentiment.sentimentservice.job.SentimentJob;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.redis.RedisOptions;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
-import io.vertx.rxjava.core.AbstractVerticle;
-import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.redis.RedisTransaction;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.rxjava.servicediscovery.types.EventBusService;
@@ -19,40 +16,24 @@ import io.vertx.rxjava.servicediscovery.types.EventBusService;
 /**
  * @author Luke Herron
  */
-public class NewsCrawlerJobMonitor extends AbstractVerticle {
+public class NewsCrawlerJobMonitor extends AbstractJobMonitor {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerJobMonitor.class);
-
-    private RedisClient redis;
-    private ServiceDiscovery serviceDiscovery;
+    private static final PendingQueue pendingQueue = PendingQueue.NEWS_CRAWLER;
+    private static final WorkingQueue workingQueue = WorkingQueue.NEWS_CRAWLER;
 
     @Override
-    public void start(Future<Void> startFuture) throws Exception {
-        LOG.info("Bringing up news crawler job monitor");
-
-        redis = RedisClient.create(vertx, new RedisOptions().setHost("redis"));
-        serviceDiscovery = ServiceDiscovery.create(vertx);
-
-        redis.ping(resultHandler -> {
-            if (resultHandler.succeeded()) {
-                monitorNewsCrawlerJobQueue();
-                startFuture.complete();
-            }
-            else {
-                startFuture.fail(resultHandler.cause());
-            }
-        });
+    protected PendingQueue getPendingQueue() {
+        return pendingQueue;
     }
 
-    private void monitorNewsCrawlerJobQueue() {
-        redis.brpoplpushObservable(SentimentService.NEWS_CRAWLER_PENDING_QUEUE, SentimentService.NEWS_CRAWLER_WORKING_QUEUE, 0)
-                .repeat()
-                .map(JsonObject::new)
-                .map(SentimentJob::new)
-                .forEach(this::startNewsSearchJob);
+    @Override
+    protected WorkingQueue getWorkingQueue() {
+        return workingQueue;
     }
 
-    private void startNewsSearchJob(SentimentJob job) {
+    @Override
+    protected void startJob(SentimentJob job) {
         LOG.info("Starting news search for job: " + job.getJobId());
 
         // When pushing the job to our linker and analyser queues, those queues must have access to the news search result
@@ -73,10 +54,10 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                 .doOnNext(job::setNewsSearchResponse)
                 // Ensure pushing to two queues and removing from one happens atomically by utilising RedisTransaction
                 .flatMap(result -> transaction.multiObservable()
-                        .flatMap(x -> transaction.lpushObservable(SentimentService.NEWS_LINKER_PENDING_QUEUE, job.toJson().encode()))
-                        .flatMap(x -> transaction.lpushObservable(SentimentService.NEWS_ANALYSER_PENDING_QUEUE, job.toJson().encode()))
-                        .flatMap(x -> transaction.lremObservable(SentimentService.NEWS_CRAWLER_WORKING_QUEUE, 0, originalJob.toJson().encode()))
-                ) // TODO: handle push errors, implement retry etc.
+                        .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_LINKER.toString(), job.toJson().encode()))
+                        .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_ANALYSER.toString(), job.toJson().encode()))
+                        .flatMap(x -> transaction.lremObservable(workingQueue.toString(), 0, originalJob.toJson().encode()))
+                )
                 .subscribe(
                         result -> {
                             LOG.info("Pushing jobs to entity linking and sentiment pending queues");
@@ -88,5 +69,15 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                         },
                         () -> LOG.info("Completed news search crawl for job: " + job.getJobId())
                 );
+    }
+
+    @Override
+    protected void setJobResult(SentimentJob job, JsonObject jobResult) {
+        job.setNewsSearchResponse(jobResult);
+    }
+
+    @Override
+    protected void announceJobResult(SentimentJob job) {
+        // No-op
     }
 }

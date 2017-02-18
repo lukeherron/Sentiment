@@ -2,7 +2,7 @@ group 'gofish'
 version '1.0-SNAPSHOT'
 
 dependencies {
-    compile (project(':common-http'))
+
 }
 
 def mainVerticleName = 'com.gofish.sentiment.newsanalyser.NewsAnalyserVerticle'

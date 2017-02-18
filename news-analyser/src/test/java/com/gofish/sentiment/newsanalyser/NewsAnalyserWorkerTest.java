@@ -3,7 +3,8 @@ package com.gofish.sentiment.newsanalyser;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -17,6 +18,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import rx.Observable;
+
+import java.net.URL;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.mock;
@@ -55,18 +58,38 @@ public class NewsAnalyserWorkerTest {
 
     @Test
     public void testNewsAnalyserReturnsExpectedJsonResultOnSuccess(TestContext context) {
+        URL responseURL = getClass().getClassLoader().getResource("data/SentimentAnalysisResponse.json");
+        assert responseURL != null;
+        JsonObject newsAnalyserResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+
         JsonObject message = new JsonObject().put("article", new JsonObject()
                 .put("name", "test article").put("description", "test article description"));
 
-        JsonObject mockResponse = new JsonObject().put("documents", new JsonArray().add(new JsonObject().put("result", 0.83)));
-
-        mockBodyHandler(mockResponse);
+        mockBodyHandler(newsAnalyserResponse);
 
         vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
             context.assertNotNull(result.body());
             JsonObject response = (JsonObject) result.body();
             context.assertEquals(
-                    message.copy().getJsonObject("article").put("sentiment", new JsonObject().put("result", 0.83)), response);
+                    message.copy().getJsonObject("article")
+                            .put("sentiment", newsAnalyserResponse.getJsonArray("documents").getJsonObject(0)), response);
+        }));
+    }
+
+    @Test
+    public void testNewsAnalyserReturnsExpectedJsonResultOnTooManyAttempts(TestContext context) {
+        URL responseURL = getClass().getClassLoader().getResource("data/TooManyRequests.json");
+        assert responseURL != null;
+        JsonObject newsAnalyserError = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+
+        JsonObject message = new JsonObject().put("article", new JsonObject()
+                .put("name", "test article").put("description", "test article description"));
+
+        mockBodyHandler(newsAnalyserError);
+
+        vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
+            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
+            context.assertEquals(newsAnalyserError.encode(), cause.getMessage());
         }));
     }
 

@@ -1,6 +1,5 @@
 package com.gofish.sentiment.newslinker;
 
-import com.gofish.sentiment.common.http.ResponseHandler;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
@@ -8,6 +7,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
@@ -81,7 +82,11 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 LOG.info("Calling Entity Linking API");
 
                 request.toObservable()
-                        .flatMap(ResponseHandler::handle)
+                        .flatMap(response -> {
+                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                            response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
+                            return observable;
+                        })
                         .flatMap(result -> this.addNewEntities(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),

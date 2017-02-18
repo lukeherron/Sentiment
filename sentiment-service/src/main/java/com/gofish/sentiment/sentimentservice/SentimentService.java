@@ -16,12 +16,12 @@ import io.vertx.serviceproxy.ProxyHelper;
 @VertxGen
 public interface SentimentService {
 
-    String NEWS_CRAWLER_PENDING_QUEUE = "newsCrawler:pendingQueue";
-    String NEWS_CRAWLER_WORKING_QUEUE = "newsCrawler:workingQueue";
-    String NEWS_ANALYSER_PENDING_QUEUE = "newsAnalyser:pendingQueue";
-    String NEWS_ANALYSER_WORKING_QUEUE = "newsAnalyser:workingQueue";
-    String NEWS_LINKER_PENDING_QUEUE = "newsLinker:pendingQueue";
-    String NEWS_LINKER_WORKING_QUEUE = "newsLinker:workingQueue";
+//    String NEWS_CRAWLER_PENDING_QUEUE = "newsCrawler:pendingQueue";
+//    String NEWS_CRAWLER_WORKING_QUEUE = "newsCrawler:workingQueue";
+//    String NEWS_ANALYSER_PENDING_QUEUE = "newsAnalyser:pendingQueue";
+//    String NEWS_ANALYSER_WORKING_QUEUE = "newsAnalyser:workingQueue";
+//    String NEWS_LINKER_PENDING_QUEUE = "newsLinker:pendingQueue";
+//    String NEWS_LINKER_WORKING_QUEUE = "newsLinker:workingQueue";
 
     String NAME = "sentiment-eventbus-service";
     String ADDRESS = "sentiment.service";

@@ -1,7 +1,8 @@
-package com.gofish.sentiment.sentimentservice;
+package com.gofish.sentiment.sentimentservice.job;
 
 import io.vertx.codegen.annotations.DataObject;
 import io.vertx.codegen.annotations.VertxGen;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 
 import java.util.UUID;
@@ -21,6 +22,7 @@ public class SentimentJob {
     private State state = State.INACTIVE;
     private int attempts = 0;
 
+    private JsonObject retryStrategy = new JsonObject();
     private JsonObject newsSearchResponse = new JsonObject();
     private JsonObject sentimentResponse = new JsonObject();
     private JsonObject entityLinkingResponse = new JsonObject();
@@ -39,6 +41,8 @@ public class SentimentJob {
         // JobConverter only populates fields that have a setter, so we update the rest manually
         jobId = json.getString("jobId");
         query = json.getString("query");
+
+        System.out.println(json.encodePrettily());
     }
 
     public JsonObject getEntityLinkingResponse() {
@@ -65,6 +69,10 @@ public class SentimentJob {
         return result;
     }
 
+    public JsonObject getRetryStrategy() {
+        return retryStrategy;
+    }
+
     public JsonObject getSentimentResponse() {
         return sentimentResponse;
     }
@@ -81,7 +89,7 @@ public class SentimentJob {
         this.entityLinkingResponse = entityLinkingResponse;
     }
 
-    public void setFailed() {
+    public void updateFailedAttempts() {
         attempts++;
     }
 
@@ -91,6 +99,14 @@ public class SentimentJob {
 
     public void setResult(JsonObject result) {
         this.result = result;
+    }
+
+    public void setRetryStrategy(RetryStrategy retryStrategy) {
+        setRetryStrategy(new JsonObject(Json.encodePrettily(retryStrategy)));
+    }
+
+    public void setRetryStrategy(JsonObject retryStrategy) {
+        this.retryStrategy = retryStrategy;
     }
 
     public void setSentimentResponse(JsonObject sentimentResponse) {

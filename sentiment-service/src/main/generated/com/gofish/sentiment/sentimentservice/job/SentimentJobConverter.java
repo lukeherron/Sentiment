@@ -14,15 +14,15 @@
  * under the License.
  */
 
-package com.gofish.sentiment.sentimentservice;
+package com.gofish.sentiment.sentimentservice.job;
 
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 
 /**
- * Converter for {@link com.gofish.sentiment.sentimentservice.SentimentJob}.
+ * Converter for {@link com.gofish.sentiment.sentimentservice.job.SentimentJob}.
  *
- * NOTE: This class has been automatically generated from the {@link com.gofish.sentiment.sentimentservice.SentimentJob} original class using Vert.x codegen.
+ * NOTE: This class has been automatically generated from the {@link com.gofish.sentiment.sentimentservice.job.SentimentJob} original class using Vert.x codegen.
  */
 public class SentimentJobConverter {
 
@@ -40,7 +40,7 @@ public class SentimentJobConverter {
       obj.setSentimentResponse(((JsonObject)json.getValue("sentimentResponse")).copy());
     }
     if (json.getValue("state") instanceof String) {
-      obj.setState(com.gofish.sentiment.sentimentservice.SentimentJob.State.valueOf((String)json.getValue("state")));
+      obj.setState(com.gofish.sentiment.sentimentservice.job.SentimentJob.State.valueOf((String)json.getValue("state")));
     }
   }
 

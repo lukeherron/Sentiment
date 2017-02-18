@@ -111,6 +111,13 @@ configure (subprojects) { project ->
         }
     }
 
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
+            html.enabled = true
+        }
+    }
+
     tasks.withType(JacocoReport) {
         afterEvaluate {
             classDirectories = files(classDirectories.files.collect {
