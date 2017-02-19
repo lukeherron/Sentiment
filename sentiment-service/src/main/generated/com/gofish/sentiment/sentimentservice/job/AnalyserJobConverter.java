@@ -17,7 +17,6 @@
 package com.gofish.sentiment.sentimentservice.job;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.json.JsonArray;
 
 /**
  * Converter for {@link com.gofish.sentiment.sentimentservice.job.AnalyserJob}.
@@ -28,7 +27,7 @@ public class AnalyserJobConverter {
 
   public static void fromJson(JsonObject json, AnalyserJob obj) {
     if (json.getValue("jobResult") instanceof JsonObject) {
-      obj.setJobResult(((JsonObject)json.getValue("jobResult")).copy());
+      obj.setResult(((JsonObject)json.getValue("jobResult")).copy());
     }
     if (json.getValue("retryStrategy") instanceof JsonObject) {
       obj.setRetryStrategy(((JsonObject)json.getValue("retryStrategy")).copy());
@@ -46,8 +45,8 @@ public class AnalyserJobConverter {
     if (obj.getJobId() != null) {
       json.put("jobId", obj.getJobId());
     }
-    if (obj.getJobResult() != null) {
-      json.put("jobResult", obj.getJobResult());
+    if (obj.getResult() != null) {
+      json.put("jobResult", obj.getResult());
     }
     if (obj.getRetryStrategy() != null) {
       json.put("retryStrategy", obj.getRetryStrategy());

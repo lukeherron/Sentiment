@@ -46,7 +46,7 @@ public abstract class AbstractJobMonitor extends AbstractVerticle {
 
     protected abstract void startJob(CrawlerJob job);
 
-    protected abstract void setJobResult(CrawlerJob job, JsonObject jobResult);
+    //protected abstract void setJobResult(CrawlerJob job, JsonObject jobResult);
 
     protected abstract void announceJobResult(CrawlerJob job);
 
@@ -63,7 +63,8 @@ public abstract class AbstractJobMonitor extends AbstractVerticle {
                 .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
                 .subscribe(
                         result -> {
-                            setJobResult(job, jobResult);
+                            job.setResult(jobResult);
+                            //setJobResult(job, jobResult);
                             announceJobResult(job);
                         },
                         failure -> processFailedJob(workingQueue, pendingQueue, job, failure),
@@ -73,7 +74,7 @@ public abstract class AbstractJobMonitor extends AbstractVerticle {
     void processFailedJob(WorkingQueue workingQueue, PendingQueue pendingQueue, CrawlerJob job, Throwable error) {
         LOG.error("Failed to process job: " + job.getJobId() + ": " + error.getMessage(), error);
 
-        job.updateFailedAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
+        job.incrementAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
         RetryStrategyFactory.calculate(job, error);
 
         // We want to perform 'remove from working queue' and 'push to pending queue' atomically, so use Redis Transaction

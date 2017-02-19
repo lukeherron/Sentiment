@@ -29,47 +29,69 @@ public abstract class AbstractJob implements Job {
         this.jobId = jobId;
     }
 
+    @Override
     public abstract long getTimeout();
 
+    @Override
     public abstract JsonObject toJson();
 
-    public JsonObject getJobResult() {
+    @Override
+    public JsonObject getResult() {
         return jobResult;
     }
 
-    public void setJobResult(JsonObject jobResult) {
+    @Override
+    public void setResult(JsonObject jobResult) {
         this.jobResult = jobResult;
     }
 
+    @Override
     public String getJobId() {
         return jobId;
     }
 
+    @Override
     public State getState() {
         return state;
     }
 
+    @Override
     public void setState(State state) {
         this.state = state;
     }
 
+    @Override
     public int getAttempts() {
         return attempts;
     }
 
+    @Override
     public void incrementAttempts() {
         attempts++;
     }
 
+    @Override
     public JsonObject getRetryStrategy() {
         return retryStrategy;
     }
 
+    @Override
     public void setRetryStrategy(RetryStrategy retryStrategy) {
         setRetryStrategy(new JsonObject(Json.encodePrettily(retryStrategy)));
     }
 
+    @Override
     public void setRetryStrategy(JsonObject retryStrategy) {
         this.retryStrategy = retryStrategy;
+    }
+
+    @Override
+    public String encode() {
+        return toJson().encode();
+    }
+
+    @Override
+    public String encodePrettily() {
+        return toJson().encodePrettily();
     }
 }
