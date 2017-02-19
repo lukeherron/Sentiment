@@ -20,13 +20,13 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.json.JsonArray;
 
 /**
- * Converter for {@link com.gofish.sentiment.sentimentservice.job.CrawlerJob}.
+ * Converter for {@link com.gofish.sentiment.sentimentservice.job.AnalyserJob}.
  *
- * NOTE: This class has been automatically generated from the {@link com.gofish.sentiment.sentimentservice.job.CrawlerJob} original class using Vert.x codegen.
+ * NOTE: This class has been automatically generated from the {@link com.gofish.sentiment.sentimentservice.job.AnalyserJob} original class using Vert.x codegen.
  */
-public class CrawlerJobConverter {
+public class AnalyserJobConverter {
 
-  public static void fromJson(JsonObject json, CrawlerJob obj) {
+  public static void fromJson(JsonObject json, AnalyserJob obj) {
     if (json.getValue("jobResult") instanceof JsonObject) {
       obj.setJobResult(((JsonObject)json.getValue("jobResult")).copy());
     }
@@ -38,16 +38,16 @@ public class CrawlerJobConverter {
     }
   }
 
-  public static void toJson(CrawlerJob obj, JsonObject json) {
+  public static void toJson(AnalyserJob obj, JsonObject json) {
+    if (obj.getArticle() != null) {
+      json.put("article", obj.getArticle());
+    }
     json.put("attempts", obj.getAttempts());
     if (obj.getJobId() != null) {
       json.put("jobId", obj.getJobId());
     }
     if (obj.getJobResult() != null) {
       json.put("jobResult", obj.getJobResult());
-    }
-    if (obj.getQuery() != null) {
-      json.put("query", obj.getQuery());
     }
     if (obj.getRetryStrategy() != null) {
       json.put("retryStrategy", obj.getRetryStrategy());

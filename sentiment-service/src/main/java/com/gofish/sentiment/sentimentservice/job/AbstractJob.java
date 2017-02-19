@@ -21,13 +21,17 @@ public abstract class AbstractJob implements Job {
     private JsonObject jobResult = new JsonObject();
     private JsonObject retryStrategy = new JsonObject(); // Represented as json to ensure eventbus can transmit it
 
-    public AbstractJob() {
+    AbstractJob() {
         jobId = UUID.randomUUID().toString();
     }
 
-    public abstract JsonObject toJson();
+    AbstractJob(String jobId) {
+        this.jobId = jobId;
+    }
 
     public abstract long getTimeout();
+
+    public abstract JsonObject toJson();
 
     public JsonObject getJobResult() {
         return jobResult;
@@ -61,11 +65,11 @@ public abstract class AbstractJob implements Job {
         return retryStrategy;
     }
 
-    public void setRetryStrategy(JsonObject retryStrategy) {
-        this.retryStrategy = retryStrategy;
-    }
-
     public void setRetryStrategy(RetryStrategy retryStrategy) {
         setRetryStrategy(new JsonObject(Json.encodePrettily(retryStrategy)));
+    }
+
+    public void setRetryStrategy(JsonObject retryStrategy) {
+        this.retryStrategy = retryStrategy;
     }
 }
