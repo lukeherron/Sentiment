@@ -26,6 +26,9 @@ public class LinkerJob extends AbstractJob {
 
     @Override
     public JsonObject toJson() {
-        return null;
+        JsonObject json = new JsonObject();
+        LinkerJobConverter.toJson(this, json); // Needs to be auto-generated first
+
+        return json;
     }
 }

@@ -26,6 +26,9 @@ public class AnalyserJob extends AbstractJob {
 
     @Override
     public JsonObject toJson() {
-        return null;
+        JsonObject json = new JsonObject();
+        AnalyserJobConverter.toJson(this, json); // Needs to be auto-generated first
+
+        return json;
     }
 }
