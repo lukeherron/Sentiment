@@ -41,8 +41,6 @@ public class SentimentJob {
         // JobConverter only populates fields that have a setter, so we update the rest manually
         jobId = json.getString("jobId");
         query = json.getString("query");
-
-        System.out.println(json.encodePrettily());
     }
 
     public JsonObject getEntityLinkingResponse() {

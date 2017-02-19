@@ -69,7 +69,8 @@ public class NewsLinkerJobMonitor extends AbstractJobMonitor {
         return Observable.zip(articles, interval, (observable, timer) -> observable)
                 .map(json -> (JsonObject) json)
                 .flatMap(json -> getLinkEntitiesObservable(service, json))
-                .lastOrDefault(workingCopy);
+                .lastOrDefault(null)
+                .map(v -> workingCopy); // We want the entire response, not just the last processed article
     }
 
     private Observable<JsonObject> getLinkEntitiesObservable(NewsLinkerService service, JsonObject json) {

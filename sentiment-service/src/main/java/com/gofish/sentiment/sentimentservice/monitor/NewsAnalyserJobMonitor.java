@@ -47,8 +47,8 @@ public class NewsAnalyserJobMonitor extends AbstractJobMonitor {
     }
 
     @Override
-    protected void setJobResult(SentimentJob job, JsonObject jobResult) {
-        job.setSentimentResponse(jobResult);
+    protected void setJobResult(SentimentJob job, JsonObject sentimentResponse) {
+        job.setSentimentResponse(sentimentResponse);
     }
 
     @Override
@@ -67,15 +67,16 @@ public class NewsAnalyserJobMonitor extends AbstractJobMonitor {
         Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
 
         return Observable.zip(articles, interval, (observable, timer) -> observable)
-                .map(json -> (JsonObject) json)
-                .flatMap(json -> getAnalyseSentimentObservable(service, json))
-                .lastOrDefault(workingCopy);
+                .map(article -> (JsonObject) article)
+                .flatMap(article -> getAnalyseSentimentObservable(service, article))
+                .lastOrDefault(null)
+                .map(v -> workingCopy); // We want the entire response, not just the last processed article
     }
 
-    private Observable<JsonObject> getAnalyseSentimentObservable(NewsAnalyserService service, JsonObject json) {
+    private Observable<JsonObject> getAnalyseSentimentObservable(NewsAnalyserService service, JsonObject article) {
         ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-        service.analyseSentiment(json, observable.toHandler());
+        service.analyseSentiment(article, observable.toHandler());
         ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-        return observable.map(json::mergeIn);
+        return observable.map(article::mergeIn);
     }
 }

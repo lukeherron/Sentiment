@@ -39,7 +39,10 @@ public class APIGatewayVerticle extends AbstractVerticle {
 
                 getSentiment(query).subscribe(
                         result -> response.end(String.valueOf(result)),
-                        failure -> requestHandler.fail(failure),
+                        failure -> {
+                            LOG.error(failure.getMessage(), failure);
+                            requestHandler.fail(failure);
+                        },
                         () -> LOG.info("Finished retrieving sentiment"));
             }
             else {

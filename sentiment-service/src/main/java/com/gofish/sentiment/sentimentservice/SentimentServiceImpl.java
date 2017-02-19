@@ -142,8 +142,8 @@ public class SentimentServiceImpl implements SentimentService {
     }
 
     private JsonObject mergeFutureResults(Future<JsonObject> newsAnalyserFuture, Future<JsonObject> newsLinkerFuture) {
-        final JsonObject analysisJson = newsAnalyserFuture.result();
-        final JsonObject linkingJson = newsLinkerFuture.result();
+        final JsonObject analysisJson = newsAnalyserFuture.result().getJsonObject("sentimentResponse");
+        final JsonObject linkingJson = newsLinkerFuture.result().getJsonObject("entityLinkingResponse");
         final JsonArray linkingValues = linkingJson.getJsonArray("value");
 
         final JsonObject resultJson = new JsonObject().mergeIn(analysisJson);
