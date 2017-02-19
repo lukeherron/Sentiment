@@ -11,7 +11,7 @@ import java.util.UUID;
  * @author Luke Herron
  */
 @DataObject(generateConverter = true)
-public class SentimentJob {
+public class CrawlerJob {
 
     @VertxGen
     public enum State { INACTIVE, ACTIVE, COMPLETE, FAILED, DELAYED }
@@ -30,13 +30,13 @@ public class SentimentJob {
 
     // TODO: add metrics
 
-    public SentimentJob(String query) {
+    public CrawlerJob(String query) {
         this.jobId = UUID.randomUUID().toString();
         this.query = query;
     }
 
-    public SentimentJob(JsonObject json) {
-        SentimentJobConverter.fromJson(json, this); // needs to be auto-generated
+    public CrawlerJob(JsonObject json) {
+        CrawlerJobConverter.fromJson(json, this); // needs to be auto-generated
 
         // JobConverter only populates fields that have a setter, so we update the rest manually
         jobId = json.getString("jobId");
@@ -117,7 +117,7 @@ public class SentimentJob {
 
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        SentimentJobConverter.toJson(this, json); // Needs to be auto-generated first
+        CrawlerJobConverter.toJson(this, json); // Needs to be auto-generated first
 
         return json;
     }

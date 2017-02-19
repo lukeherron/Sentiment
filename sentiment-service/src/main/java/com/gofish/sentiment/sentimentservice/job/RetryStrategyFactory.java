@@ -15,7 +15,7 @@ public class RetryStrategyFactory {
     private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
     private static final Logger LOG = LoggerFactory.getLogger(RetryStrategyFactory.class);
 
-    public static void calculate(SentimentJob job, Throwable throwable) {
+    public static void calculate(CrawlerJob job, Throwable throwable) {
         if (throwable instanceof ReplyException) {
             calculateFromReplyException(job, (ReplyException) throwable);
         }
@@ -24,7 +24,7 @@ public class RetryStrategyFactory {
         }
     }
 
-    private static void calculateFromReplyException(SentimentJob job, ReplyException replyException) {
+    private static void calculateFromReplyException(CrawlerJob job, ReplyException replyException) {
         switch (replyException.failureType()) {
             case NO_HANDLERS:
             case TIMEOUT:
@@ -40,7 +40,7 @@ public class RetryStrategyFactory {
         }
     }
 
-    private static void processErrorMessage(SentimentJob job, JsonObject errorMessage) {
+    private static void processErrorMessage(CrawlerJob job, JsonObject errorMessage) {
         JsonObject errorJson = errorMessage.getJsonObject("error", new JsonObject());
         Integer statusCode = Optional.ofNullable(errorJson.getInteger("statusCode"))
                 .orElseGet(() -> errorMessage.getInteger("statusCode", 0));

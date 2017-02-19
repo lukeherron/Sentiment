@@ -3,7 +3,7 @@ package com.gofish.sentiment.sentimentservice.monitor;
 import com.gofish.sentiment.newscrawler.NewsCrawlerService;
 import com.gofish.sentiment.sentimentservice.PendingQueue;
 import com.gofish.sentiment.sentimentservice.WorkingQueue;
-import com.gofish.sentiment.sentimentservice.job.SentimentJob;
+import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -33,7 +33,7 @@ public class NewsCrawlerJobMonitor extends AbstractJobMonitor {
     }
 
     @Override
-    protected void startJob(SentimentJob job) {
+    protected void startJob(CrawlerJob job) {
         LOG.info("Starting news search for job: " + job.getJobId());
 
         // When pushing the job to our linker and analyser queues, those queues must have access to the news search result
@@ -41,7 +41,7 @@ public class NewsCrawlerJobMonitor extends AbstractJobMonitor {
         // job before it reaches those queues, but when we modify the job we can't use it to remove the job from the
         // news crawler working queue, as it will no longer match. For this reason, we create a copy before we modify it
         // so that we can successfully remove it.
-        SentimentJob originalJob = new SentimentJob(job.toJson());
+        CrawlerJob originalJob = new CrawlerJob(job.toJson());
         RedisTransaction transaction = redis.transaction();
 
         EventBusService.<NewsCrawlerService>getProxyObservable(serviceDiscovery, NewsCrawlerService.class.getName())
@@ -72,12 +72,12 @@ public class NewsCrawlerJobMonitor extends AbstractJobMonitor {
     }
 
     @Override
-    protected void setJobResult(SentimentJob job, JsonObject jobResult) {
+    protected void setJobResult(CrawlerJob job, JsonObject jobResult) {
         job.setNewsSearchResponse(jobResult);
     }
 
     @Override
-    protected void announceJobResult(SentimentJob job) {
+    protected void announceJobResult(CrawlerJob job) {
         // No-op
     }
 }

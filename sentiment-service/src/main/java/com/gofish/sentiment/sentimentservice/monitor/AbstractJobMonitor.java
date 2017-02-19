@@ -3,7 +3,7 @@ package com.gofish.sentiment.sentimentservice.monitor;
 import com.gofish.sentiment.sentimentservice.PendingQueue;
 import com.gofish.sentiment.sentimentservice.WorkingQueue;
 import com.gofish.sentiment.sentimentservice.job.RetryStrategyFactory;
-import com.gofish.sentiment.sentimentservice.job.SentimentJob;
+import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -44,21 +44,21 @@ public abstract class AbstractJobMonitor extends AbstractVerticle {
 
     protected abstract WorkingQueue getWorkingQueue();
 
-    protected abstract void startJob(SentimentJob job);
+    protected abstract void startJob(CrawlerJob job);
 
-    protected abstract void setJobResult(SentimentJob job, JsonObject jobResult);
+    protected abstract void setJobResult(CrawlerJob job, JsonObject jobResult);
 
-    protected abstract void announceJobResult(SentimentJob job);
+    protected abstract void announceJobResult(CrawlerJob job);
 
     private void monitorJobQueue(PendingQueue pendingQueue, WorkingQueue workingQueue) {
         redis.brpoplpushObservable(pendingQueue.toString(), workingQueue.toString(), 0)
                 .repeat()
                 .map(JsonObject::new)
-                .map(SentimentJob::new)
+                .map(CrawlerJob::new)
                 .forEach(this::startJob);
     }
 
-    void processCompletedJob(WorkingQueue workingQueue, PendingQueue pendingQueue, SentimentJob job, JsonObject jobResult) {
+    void processCompletedJob(WorkingQueue workingQueue, PendingQueue pendingQueue, CrawlerJob job, JsonObject jobResult) {
         redis.lremObservable(workingQueue.toString(), 0, job.toJson().encode())
                 .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
                 .subscribe(
@@ -70,7 +70,7 @@ public abstract class AbstractJobMonitor extends AbstractVerticle {
                         () -> LOG.info("Finished processing completed job in queue: " + workingQueue));
     }
 
-    void processFailedJob(WorkingQueue workingQueue, PendingQueue pendingQueue, SentimentJob job, Throwable error) {
+    void processFailedJob(WorkingQueue workingQueue, PendingQueue pendingQueue, CrawlerJob job, Throwable error) {
         LOG.error("Failed to process job: " + job.getJobId() + ": " + error.getMessage(), error);
 
         job.updateFailedAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts

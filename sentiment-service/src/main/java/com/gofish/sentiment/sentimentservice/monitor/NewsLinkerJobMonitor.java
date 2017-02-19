@@ -3,7 +3,7 @@ package com.gofish.sentiment.sentimentservice.monitor;
 import com.gofish.sentiment.newslinker.NewsLinkerService;
 import com.gofish.sentiment.sentimentservice.PendingQueue;
 import com.gofish.sentiment.sentimentservice.WorkingQueue;
-import com.gofish.sentiment.sentimentservice.job.SentimentJob;
+import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -35,7 +35,7 @@ public class NewsLinkerJobMonitor extends AbstractJobMonitor {
     }
 
     @Override
-    protected void startJob(SentimentJob job) {
+    protected void startJob(CrawlerJob job) {
         LOG.info("Starting news linking for job: " + job.getJobId());
 
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
@@ -47,12 +47,12 @@ public class NewsLinkerJobMonitor extends AbstractJobMonitor {
     }
 
     @Override
-    protected void setJobResult(SentimentJob job, JsonObject jobResult) {
+    protected void setJobResult(CrawlerJob job, JsonObject jobResult) {
         job.setEntityLinkingResponse(jobResult);
     }
 
     @Override
-    protected void announceJobResult(SentimentJob job) {
+    protected void announceJobResult(CrawlerJob job) {
         vertx.eventBus().send("news-linker:" + job.getJobId(), job.toJson());
     }
 

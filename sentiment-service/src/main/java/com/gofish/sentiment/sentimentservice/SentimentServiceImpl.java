@@ -1,6 +1,6 @@
 package com.gofish.sentiment.sentimentservice;
 
-import com.gofish.sentiment.sentimentservice.job.SentimentJob;
+import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.*;
 import io.vertx.core.eventbus.MessageConsumer;
@@ -72,7 +72,7 @@ public class SentimentServiceImpl implements SentimentService {
         final Future<JsonObject> newsLinkerFuture = Future.future();
         final CompositeFuture analyseSentimentFuture = CompositeFuture.join(newsAnalyserFuture, newsLinkerFuture);
 
-        final SentimentJob job = new SentimentJob(query);
+        final CrawlerJob job = new CrawlerJob(query);
 
         // Set up a unique listener to receive the results of a processed job. There are three specific job queues
         // (although each are split into pending/working), but we only need to listen for two: news-analyser and
