@@ -2,8 +2,10 @@ package com.gofish.sentiment.sentimentservice;
 
 import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
 import com.gofish.sentiment.storage.StorageService;
-import io.vertx.core.*;
-import io.vertx.core.eventbus.MessageConsumer;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -68,50 +70,23 @@ public class SentimentServiceImpl implements SentimentService {
 
     @Override
     public SentimentService analyseSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler) {
-        final Future<JsonObject> newsAnalyserFuture = Future.future();
-        final Future<JsonObject> newsLinkerFuture = Future.future();
-        final CompositeFuture analyseSentimentFuture = CompositeFuture.join(newsAnalyserFuture, newsLinkerFuture);
-
         final CrawlerJob job = new CrawlerJob(query);
 
-        // Set up a unique listener to receive the results of a processed job. There are three specific job queues
-        // (although each are split into pending/working), but we only need to listen for two: news-analyser and
-        // news-linker, as both of these queues work on the results of the news-crawler job queue, i.e. we know we can't
-        // receive the final result from the news-crawler, so we exclude listening for its results.
-        final MessageConsumer<JsonObject> analyseConsumer = vertx.eventBus().localConsumer("news-analyser:" + job.getJobId(), messageHandler -> {
+        vertx.eventBus().<JsonObject>localConsumer("news-crawler:" + job.getJobId(), messageHandler -> {
             final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
-            newsAnalyserFuture.complete(result);
+            resultHandler.handle(Future.succeededFuture(result));
         });
-
-        final MessageConsumer<JsonObject> linkerConsumer = vertx.eventBus().localConsumer("news-linker:" + job.getJobId(), messageHandler -> {
-            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
-            newsLinkerFuture.complete(result);
-        });
-
-        analyseConsumer.exceptionHandler(newsAnalyserFuture::fail);
-        linkerConsumer.exceptionHandler(newsLinkerFuture::fail);
-        analyseConsumer.endHandler(endHandler -> analyseConsumer.unregister());
-        linkerConsumer.endHandler(endHandler -> linkerConsumer.unregister());
 
         // With the listeners ready, we can push the job onto the queue
         redis.lpush(PendingQueue.NEWS_CRAWLER.toString(), job.toJson().encode(), pushHandler -> {
             if (pushHandler.succeeded()) {
                 LOG.info("Job added to queue: " + pushHandler.result());
             }
-            else if (!analyseSentimentFuture.failed()) {
-                analyseSentimentFuture.fail(pushHandler.cause());
+            else {
+                LOG.error(pushHandler.cause().getMessage(), pushHandler.cause());
+                resultHandler.handle(Future.failedFuture(pushHandler.cause()));
             }
         });
-
-        analyseSentimentFuture
-                .map(future -> mergeFutureResults(newsAnalyserFuture, newsLinkerFuture))
-                .compose(json -> saveAnalysis(query, json.getJsonArray("value")))
-                .compose(json -> getStorageService().compose(storageService -> {
-                    final Future<JsonObject> sentimentResultsFuture = Future.future();
-                    storageService.getSentimentResults(query, sentimentResultsFuture.completer());
-                    return sentimentResultsFuture;
-                }))
-                .setHandler(resultHandler);
 
         return this;
     }

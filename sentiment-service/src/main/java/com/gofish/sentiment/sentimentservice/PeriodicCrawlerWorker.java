@@ -32,7 +32,7 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
-        LOG.info("Bringing up NewsLinkerVerticle");
+        LOG.info("Bringing up PeriodicCrawlerVerticle");
 
         config = Optional.ofNullable(config()).orElseGet(JsonObject::new);
         redis = RedisClient.create(vertx, new RedisOptions().setHost("redis"));

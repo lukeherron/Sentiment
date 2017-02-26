@@ -137,7 +137,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
     private HttpClientOptions getHttpClientOptions() {
         return new HttpClientOptions()
                 .setPipelining(true)
-                .setPipeliningLimit(8)
+                .setPipeliningLimit(10)
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);

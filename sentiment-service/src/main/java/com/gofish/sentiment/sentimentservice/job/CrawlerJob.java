@@ -30,9 +30,14 @@ public class CrawlerJob extends AbstractJob {
     }
 
     @Override
-    public long getTimeout() {
-        return Math.round(5L * 0.5 * (Math.pow(2, getAttempts()) - 1));
+    public Job copy() {
+        return new CrawlerJob(query);
     }
+
+//    @Override
+//    public long getTimeout() {
+//        return Math.round(5L * 0.5 * (Math.pow(2, getAttempts()) - 1));
+//    }
 
     @Override
     public JsonObject toJson() {

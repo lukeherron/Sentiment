@@ -32,9 +32,14 @@ public class LinkerJob extends AbstractJob {
     }
 
     @Override
-    public long getTimeout() {
-        return 0;
+    public Job copy() {
+        return new LinkerJob(article.copy());
     }
+
+//    @Override
+//    public long getTimeout() {
+//        return 0;
+//    }
 
     @Override
     public JsonObject toJson() {

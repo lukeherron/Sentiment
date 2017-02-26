@@ -18,22 +18,29 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
 
     public NewsLinkerServiceImpl(Vertx vertx, JsonObject config) {
         this.vertx = vertx;
-        this.workerOptions = new DeploymentOptions().setConfig(config).setWorker(true);
+        this.workerOptions = new DeploymentOptions().setConfig(config).setInstances(10).setWorker(true);
+//
+//        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
+//            System.out.println("DEPLOYED");
+//        });
     }
 
     @Override
     public void linkEntities(JsonObject article, Handler<AsyncResult<JsonObject>> resultHandler) {
         LOG.info("Starting entity linking");
 
-        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
-            if (completionHandler.succeeded()) {
-                JsonObject message = new JsonObject().put("article", article);
-                vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
-            }
-            else {
-                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
-            }
-        });
+        JsonObject message = new JsonObject().put("article", article);
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
+
+//        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
+//            if (completionHandler.succeeded()) {
+//                JsonObject message = new JsonObject().put("article", article);
+//                vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
+//            }
+//            else {
+//                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
+//            }
+//        });
     }
 
     private Handler<AsyncResult<Message<JsonObject>>> handleReply(Handler<AsyncResult<JsonObject>> resultHandler) {
@@ -43,6 +50,8 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
                 resultHandler.handle(Future.succeededFuture(result));
             }
             else {
+                System.out.println("ERROR ERROR ERROR");
+                System.out.println(replyHandler.cause().getMessage());
                 resultHandler.handle(Future.failedFuture(replyHandler.cause()));
             }
         };

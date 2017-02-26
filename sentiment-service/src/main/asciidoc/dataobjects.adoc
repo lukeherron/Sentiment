@@ -14,7 +14,7 @@
 |[[article]]`article`|`Json object`|-
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
-|[[jobResult]]`jobResult`|`Json object`|-
+|[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
 |[[timeout]]`timeout`|`Number (long)`|-
@@ -33,8 +33,8 @@
 ^|Name | Type ^| Description
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
-|[[jobResult]]`jobResult`|`Json object`|-
 |[[query]]`query`|`String`|-
+|[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
 |[[timeout]]`timeout`|`Number (long)`|-
@@ -54,9 +54,25 @@
 |[[article]]`article`|`Json object`|-
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
-|[[jobResult]]`jobResult`|`Json object`|-
+|[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
 |[[timeout]]`timeout`|`Number (long)`|-
+|===
+
+[[RetryStrategy]]
+== RetryStrategy
+
+++++
+++++
+'''
+
+[cols=">25%,^25%,50%"]
+[frame="topbot"]
+|===
+^|Name | Type ^| Description
+|[[retryDelay]]`retryDelay`|`Number (int)`|-
+|[[timeout]]`timeout`|`Number (long)`|-
+|[[timestamp]]`timestamp`|`Number (long)`|-
 |===
 

@@ -1,6 +1,5 @@
 package com.gofish.sentiment.sentimentservice.job;
 
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -30,12 +29,6 @@ public abstract class AbstractJob implements Job {
     }
 
     @Override
-    public abstract long getTimeout();
-
-    @Override
-    public abstract JsonObject toJson();
-
-    @Override
     public JsonObject getResult() {
         return jobResult;
     }
@@ -53,6 +46,15 @@ public abstract class AbstractJob implements Job {
     @Override
     public State getState() {
         return state;
+    }
+
+    @Override
+    public long getTimeout() {
+        if (retryStrategy == null || retryStrategy.isEmpty()) {
+            return Math.round(5L * 0.5 * (Math.pow(2, attempts) - 1));
+        }
+
+        return new RetryStrategy(retryStrategy).getTimeout();
     }
 
     @Override
@@ -77,7 +79,7 @@ public abstract class AbstractJob implements Job {
 
     @Override
     public void setRetryStrategy(RetryStrategy retryStrategy) {
-        setRetryStrategy(new JsonObject(Json.encodePrettily(retryStrategy)));
+        setRetryStrategy(retryStrategy.toJson());
     }
 
     @Override

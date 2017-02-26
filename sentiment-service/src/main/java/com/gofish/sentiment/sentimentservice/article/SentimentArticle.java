@@ -18,6 +18,10 @@ public class SentimentArticle {
     }
 
     public String getUUID() {
-        return article.getString("SentimentUUID");
+        return article.getString("sentimentUUID");
+    }
+
+    public void mergeIn(JsonObject otherArticle) {
+        article.mergeIn(otherArticle);
     }
 }

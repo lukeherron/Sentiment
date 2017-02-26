@@ -17,6 +17,7 @@
 package com.gofish.sentiment.sentimentservice.job;
 
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.json.JsonArray;
 
 /**
  * Converter for {@link com.gofish.sentiment.sentimentservice.job.CrawlerJob}.
@@ -26,8 +27,8 @@ import io.vertx.core.json.JsonObject;
 public class CrawlerJobConverter {
 
   public static void fromJson(JsonObject json, CrawlerJob obj) {
-    if (json.getValue("jobResult") instanceof JsonObject) {
-      obj.setResult(((JsonObject)json.getValue("jobResult")).copy());
+    if (json.getValue("result") instanceof JsonObject) {
+      obj.setResult(((JsonObject)json.getValue("result")).copy());
     }
     if (json.getValue("retryStrategy") instanceof JsonObject) {
       obj.setRetryStrategy(((JsonObject)json.getValue("retryStrategy")).copy());
@@ -42,11 +43,11 @@ public class CrawlerJobConverter {
     if (obj.getJobId() != null) {
       json.put("jobId", obj.getJobId());
     }
-    if (obj.getResult() != null) {
-      json.put("jobResult", obj.getResult());
-    }
     if (obj.getQuery() != null) {
       json.put("query", obj.getQuery());
+    }
+    if (obj.getResult() != null) {
+      json.put("result", obj.getResult());
     }
     if (obj.getRetryStrategy() != null) {
       json.put("retryStrategy", obj.getRetryStrategy());

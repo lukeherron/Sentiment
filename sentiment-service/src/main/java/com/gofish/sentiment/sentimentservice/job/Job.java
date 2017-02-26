@@ -11,6 +11,8 @@ public interface Job {
     @VertxGen
     enum State { INACTIVE, ACTIVE, COMPLETE, FAILED, DELAYED }
 
+    Job copy();
+
     long getTimeout();
 
     JsonObject toJson();

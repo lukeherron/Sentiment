@@ -3,12 +3,20 @@ package com.gofish.sentiment.sentimentservice.monitor;
 import com.gofish.sentiment.newslinker.NewsLinkerService;
 import com.gofish.sentiment.sentimentservice.PendingQueue;
 import com.gofish.sentiment.sentimentservice.WorkingQueue;
-import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
+import com.gofish.sentiment.sentimentservice.article.SentimentArticle;
+import com.gofish.sentiment.sentimentservice.job.Job;
+import com.gofish.sentiment.sentimentservice.job.LinkerJob;
+import com.gofish.sentiment.sentimentservice.job.RetryStrategyFactory;
+import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.redis.RedisOptions;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.redis.RedisClient;
+import io.vertx.rxjava.redis.RedisTransaction;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.rxjava.servicediscovery.types.EventBusService;
 import rx.Observable;
@@ -18,59 +26,67 @@ import java.util.concurrent.TimeUnit;
 /**
  * @author Luke Herron
  */
-public class NewsLinkerJobMonitor extends AbstractJobMonitor {
+public class NewsLinkerJobMonitor extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(NewsLinkerJobMonitor.class);
     private static final PendingQueue pendingQueue = PendingQueue.NEWS_LINKER;
     private static final WorkingQueue workingQueue = WorkingQueue.NEWS_LINKER;
 
-    @Override
-    protected PendingQueue getPendingQueue() {
-        return pendingQueue;
-    }
+    private RedisClient actionClient;
+    private RedisClient monitorClient;
+    private RedisOptions redisOptions = new RedisOptions().setHost("redis");
+    private ServiceDiscovery serviceDiscovery;
 
     @Override
-    protected WorkingQueue getWorkingQueue() {
-        return workingQueue;
+    public void start(Future<Void> startFuture) throws Exception {
+        actionClient = RedisClient.create(vertx, redisOptions);
+        monitorClient = RedisClient.create(vertx, redisOptions);
+        serviceDiscovery = ServiceDiscovery.create(vertx);
+
+        monitorClient.ping(resultHandler -> {
+            if (resultHandler.succeeded()) {
+                monitorJobQueue(pendingQueue, workingQueue);
+                startFuture.complete();
+            }
+            else {
+                startFuture.fail(resultHandler.cause());
+            }
+        });
     }
 
-    @Override
-    protected void startJob(CrawlerJob job) {
+    private void monitorJobQueue(PendingQueue pendingQueue, WorkingQueue workingQueue) {
+        LOG.info("Monitoring " + pendingQueue);
+
+        transferJobObservable(pendingQueue, workingQueue)
+                .repeat()
+                .map(JsonObject::new)
+                .subscribe(this::startJob, LOG::error, ()-> LOG.info("COMPLETED"));
+    }
+
+    private Observable<String> transferJobObservable(PendingQueue pendingQueue, WorkingQueue workingQueue) {
+        // When calling redis clients' brpoplpushObservable it appears unable to chain a repeat() call as onComplete is
+        // never called (as per rxJava docs, repeat occurs once onComplete happens). For this reason, I've taken the
+        // route of wrapping this call in our own observable, and calling onComplete immediately after onNext
+        return Observable.create(subscriber -> {
+            monitorClient.brpoplpushObservable(pendingQueue.toString(), workingQueue.toString(), 0)
+                    .subscribe(onNext -> {
+                        subscriber.onNext(onNext);
+                        subscriber.onCompleted();
+                    }, subscriber::onError);
+        });
+    }
+
+    private void startJob(JsonObject jsonJob) {
+        LinkerJob job = new LinkerJob(jsonJob);
+
         LOG.info("Starting news linking for job: " + job.getJobId());
 
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
-                .flatMap(service -> startRateLimitedRequest(job.getNewsSearchResponse(), service))
+                .flatMap(service -> getLinkEntitiesObservable(service, job.getArticle().copy()))
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, pendingQueue, job, result),
-                        failure -> processFailedJob(workingQueue, pendingQueue, job, failure),
+                        result -> processCompletedJob(workingQueue, job, result),
+                        failure -> processFailedJob(job, failure),
                         () -> LOG.info("Completed news linking job"));
-    }
-
-    @Override
-    protected void setJobResult(CrawlerJob job, JsonObject jobResult) {
-        job.setEntityLinkingResponse(jobResult);
-    }
-
-    @Override
-    protected void announceJobResult(CrawlerJob job) {
-        vertx.eventBus().send("news-linker:" + job.getJobId(), job.toJson());
-    }
-
-    private Observable<JsonObject> startRateLimitedRequest(JsonObject newsSearchResponse, NewsLinkerService service) {
-        // Avoid modifying the original job until we are certain the request is going to be successful (i.e. the job has
-        // been removed from any active queues first). To avoid this, we make a copy of newsSearchResponse and make
-        // changes to the copy. This is necessary because newsSearchResponse is embedded in the original job, and any
-        // changes to the JsonObject are reflected in the job
-        JsonObject workingCopy = newsSearchResponse.copy();
-
-        Observable<Object> articles = Observable.from(workingCopy.getJsonArray("value"));
-        Observable<Long> interval = Observable.interval(400, TimeUnit.MILLISECONDS);
-
-        return Observable.zip(articles, interval, (observable, timer) -> observable)
-                .map(json -> (JsonObject) json)
-                .flatMap(json -> getLinkEntitiesObservable(service, json))
-                .lastOrDefault(null)
-                .map(v -> workingCopy); // We want the entire response, not just the last processed article
     }
 
     private Observable<JsonObject> getLinkEntitiesObservable(NewsLinkerService service, JsonObject json) {
@@ -78,5 +94,52 @@ public class NewsLinkerJobMonitor extends AbstractJobMonitor {
         service.linkEntities(json, observable.toHandler());
         ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
         return observable.map(json::mergeIn);
+    }
+
+    private void processCompletedJob(WorkingQueue workingQueue, LinkerJob job, JsonObject jobResult) {
+        LOG.info("Processing of job " + job.getJobId() + " in " + workingQueue + " complete");
+
+        actionClient.lremObservable(workingQueue.toString(), 0, job.toJson().encode())
+                .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
+                .subscribe(
+                        result -> {
+                            job.setResult(jobResult);
+                            announceJobResult(job);
+                        },
+                        failure -> LOG.error(failure.getMessage(), failure),
+                        () -> LOG.info("Finished processing completed job in queue: " + workingQueue));
+    }
+
+    private void processFailedJob(LinkerJob job, Throwable error) {
+        LOG.error("Failed to process job: " + job.getJobId(), error);
+
+        Job originalJob = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
+        job.incrementAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
+        RetryStrategyFactory.calculate(job, error);
+
+        RedisTransaction transaction = actionClient.transaction();
+
+        transaction.multiObservable().delay(job.getTimeout(), TimeUnit.MILLISECONDS)
+                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_LINKER.toString(), 0, originalJob.encode()))
+                .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_LINKER.toString(), job.encode()))
+                .flatMap(x -> transaction.execObservable())
+                .subscribe(
+                        result -> LOG.info(result.encodePrettily()),
+                        failure -> transaction.discardObservable(),
+                        () -> LOG.info("Re-queued news linker job"));
+
+        announceJobResult(job, error);
+    }
+
+    private void announceJobResult(Job job) {
+        SentimentArticle article = new SentimentArticle(job.getResult());
+        vertx.eventBus().publish("news-linker:article:" + article.getUUID(), job.toJson());
+    }
+
+    private void announceJobResult(Job job, Throwable error) {
+        SentimentArticle article = new SentimentArticle(job.getResult());
+        vertx.eventBus().publish("news-linker:article:error:" + article.getUUID(), new JsonObject()
+                .put("error", error.getMessage())
+                .put("retryStrategy", job.getRetryStrategy()));
     }
 }
