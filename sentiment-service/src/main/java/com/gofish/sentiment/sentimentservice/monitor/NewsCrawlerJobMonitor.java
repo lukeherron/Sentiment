@@ -79,6 +79,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
 
     private void startJob(JsonObject jsonJob) {
         CrawlerJob job = new CrawlerJob(jsonJob);
+        job.setState(Job.State.ACTIVE);
         LOG.info("Starting news search for job: " + job.getJobId());
 
         // When pushing the job to our linker and analyser queues, those queues must have access to the news search result

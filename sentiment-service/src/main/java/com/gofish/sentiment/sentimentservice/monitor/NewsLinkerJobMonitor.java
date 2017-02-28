@@ -78,6 +78,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
 
     private void startJob(JsonObject jsonJob) {
         LinkerJob job = new LinkerJob(jsonJob);
+        job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news linking for job: " + job.getJobId());
 

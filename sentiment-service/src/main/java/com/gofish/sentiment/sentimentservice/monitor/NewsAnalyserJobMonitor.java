@@ -78,6 +78,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
 
     private void startJob(JsonObject jsonJob) {
         AnalyserJob job = new AnalyserJob(jsonJob);
+        job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news analysis for job: " + job.getJobId());
 
