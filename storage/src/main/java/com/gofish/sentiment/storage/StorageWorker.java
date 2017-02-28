@@ -67,6 +67,7 @@ public class StorageWorker extends AbstractVerticle {
                 break;
             case "hasArticle":
                 hasArticle(message.body(), message);
+                break;
             case "hasCollection":
                 hasCollection(message.body(), message);
                 break;
