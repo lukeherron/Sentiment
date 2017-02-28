@@ -17,6 +17,14 @@ public class SentimentArticle {
         return article;
     }
 
+    public String getName() {
+        return article.getString("name");
+    }
+
+    public String getDescription() {
+        return article.getString("description");
+    }
+
     public String getUUID() {
         return article.getString("sentimentUUID");
     }
