@@ -12,7 +12,7 @@ import java.util.Optional;
  */
 public class RetryStrategyFactory {
 
-    private static final int DEFAULT_RETRY_DELAY_SECONDS = 2;
+    private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 5;
     private static final Logger LOG = LoggerFactory.getLogger(RetryStrategyFactory.class);
 
     public static void calculate(Job job, Throwable throwable) {
@@ -29,7 +29,14 @@ public class RetryStrategyFactory {
             case NO_HANDLERS:
             case TIMEOUT:
                 // No retry strategy required. Set the default retry (with fallback) and requeue.
-                job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+                if (job.getAttempts() > DEFAULT_MAX_RETRY_ATTEMPTS) {
+                    JsonObject errorMessage = new JsonObject(replyException.getMessage());
+                    processTooManyAttempts(job, errorMessage);
+                }
+                else {
+                    job.setState(Job.State.DELAYED);
+                    job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+                }
                 break;
             case RECIPIENT_FAILURE:
                 JsonObject errorMessage = new JsonObject(replyException.getMessage());
@@ -49,28 +56,74 @@ public class RetryStrategyFactory {
                 .orElseGet(() -> errorMessage.getString("message"));
 
         switch (statusCode) {
-            case 429:
-                // Too many attempts. Indicate wait is required
-                try {
-                    int delay = Integer.parseInt(message.replaceAll("[^\\d]", ""));
-                    job.setRetryStrategy(new RetryStrategy(delay));
-                }
-                catch (NumberFormatException e) {
-                    LOG.error("Could not extract wait time from error message:\n"
-                            + errorMessage.encodePrettily(), e);
-
-                    job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
-                }
+            case 400: // Bad request
+                processError400(job, errorMessage, message);
                 break;
-            case 0:
-                // Method parameter errorMessage is not a valid json object
-                LOG.error("Encountered invalid error message in RetryStrategy#processErrorMessage()");
-                LOG.error(errorMessage.encodePrettily());
-                job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+            case 413: // Request entity is too large
+                processError413(job, errorMessage, message);
+                break;
+            case 415: // Unsupported media type
+                processError415(job, errorMessage, message);
+                break;
+            case 429: // Too many attempts. Delay required.
+                processError429(job, errorMessage, message);
+                break;
+            case 0: // Method parameter 'errorMessage' is not a valid json object
+                processInvalidError(job, errorMessage, "Encountered invalid error message in RetryStrategy#processErrorMessage()");
                 break;
             default:
-                LOG.error("Encountered unhandled statusCode (RetryStrategy#processErrorMessage()) :" + statusCode);
-                job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+                processInvalidError(job, errorMessage, "Encountered unhandled statusCode in RetryStrategy#processErrorMessage():" + statusCode);
         }
+    }
+
+    private static void processError400(Job job, JsonObject errorMessage, String message) {
+        if (job.getAttempts() > DEFAULT_MAX_RETRY_ATTEMPTS) {
+            processTooManyAttempts(job, errorMessage);
+        }
+        else {
+            job.setState(Job.State.DELAYED);
+            job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+        }
+    }
+
+    private static void processError413(Job job, JsonObject errorMessage, String message) {
+        job.setState(Job.State.FAILED);
+        job.setResult(errorMessage);
+    }
+
+    private static void processError415(Job job, JsonObject errorMessage, String message) {
+        job.setState(Job.State.FAILED);
+        job.setResult(errorMessage);
+    }
+
+    private static void processError429(Job job, JsonObject errorMessage, String message) {
+        try {
+            int delay = Integer.parseInt(message.replaceAll("[^\\d]", ""));
+            job.setRetryStrategy(new RetryStrategy(delay));
+        }
+        catch (NumberFormatException e) {
+            LOG.error("Could not extract wait time from error message:\n"
+                    + errorMessage.encodePrettily(), e);
+
+            job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+        }
+    }
+
+    private static void processInvalidError(Job job, JsonObject errorMessage, String logMessage) {
+        LOG.error(logMessage);
+        LOG.error(errorMessage.encodePrettily());
+
+        if (job.getAttempts() > DEFAULT_MAX_RETRY_ATTEMPTS) {
+            processTooManyAttempts(job, errorMessage);
+        }
+        else {
+            job.setState(Job.State.DELAYED);
+            job.setRetryStrategy(new RetryStrategy((int) job.getTimeout()));
+        }
+    }
+
+    private static void processTooManyAttempts(Job job, JsonObject errorMessage) {
+        job.setState(Job.State.FAILED);
+        job.setResult(errorMessage);
     }
 }

@@ -19,7 +19,6 @@ public class RetryStrategy {
     }
 
     public RetryStrategy(int retryDelay) {
-        //timeStamp = System.currentTimeMillis() / 1000L;
         timestamp = System.currentTimeMillis();
         this.retryDelay = retryDelay;
     }
