@@ -216,6 +216,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                 .subscribe(
                         result -> {
                             job.setResult(jobResult);
+                            job.setState(Job.State.COMPLETE);
                             announceJobResult(job);
                         },
                         failure -> LOG.error(failure.getMessage(), failure),
