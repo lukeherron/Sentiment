@@ -104,7 +104,7 @@ public class SentimentServiceImpl implements SentimentService {
                 .compose(storageService -> {
                     final JsonObject collectionIndex = new JsonObject()
                             .put("name", 1)
-                            .put("datePublished", 1)
+                            //.put("datePublished", 1)
                             .put("description", 1);
 
                     storageService.createIndex(query, collectionIndex, createIndexFuture.completer());
