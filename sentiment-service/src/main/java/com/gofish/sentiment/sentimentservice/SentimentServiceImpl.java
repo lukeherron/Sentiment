@@ -6,7 +6,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -114,34 +113,6 @@ public class SentimentServiceImpl implements SentimentService {
                 .setHandler(addNewQueryFuture.completer());
 
         return addNewQueryFuture;
-    }
-
-    private JsonObject mergeFutureResults(Future<JsonObject> newsAnalyserFuture, Future<JsonObject> newsLinkerFuture) {
-        final JsonObject analysisJson = newsAnalyserFuture.result().getJsonObject("sentimentResponse");
-        final JsonObject linkingJson = newsLinkerFuture.result().getJsonObject("entityLinkingResponse");
-        final JsonArray linkingValues = linkingJson.getJsonArray("value");
-
-        final JsonObject resultJson = new JsonObject().mergeIn(analysisJson);
-        final JsonArray resultJsonValues = resultJson.getJsonArray("value");
-
-        // Iterate each value, and merge in the matching values from linkingJson
-        resultJsonValues.stream()
-                .map(article -> (JsonObject) article)
-                .forEach(article -> linkingValues.stream()
-                        .map(linkingArticle -> (JsonObject) linkingArticle)
-                        .filter(linkingArticle -> linkingArticle.getString("url").equals(article.getString("url")))
-                        .forEach(article::mergeIn));
-
-        return resultJson;
-    }
-
-    private Future<JsonObject> saveAnalysis(String query, JsonArray articles) {
-        final Future<JsonObject> saveAnalysisFuture = Future.future();
-
-        return getStorageService().compose(storageService -> {
-            storageService.saveArticles(query, articles, saveAnalysisFuture.completer());
-            return saveAnalysisFuture;
-        });
     }
 
     private Future<StorageService> getStorageService() {
