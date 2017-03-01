@@ -25,19 +25,8 @@ public class NewsAnalyserServiceImpl implements NewsAnalyserService {
     public void analyseSentiment(JsonObject article, Handler<AsyncResult<JsonObject>> resultHandler) {
         LOG.info("Starting sentiment analysis");
 
-        vertx.deployVerticle(NewsAnalyserWorker.class.getName(), workerOptions, completionHandler -> {
-            if (completionHandler.succeeded()) {
-//                eventBus.sender(NewsAnalyserWorker.ADDRESS)
-//                        .send(new JsonObject().put("article", article), handleReply(resultHandler))
-//                        .exceptionHandler(cause -> resultHandler.handle(Future.failedFuture(cause)));
-                JsonObject message = new JsonObject().put("article", article);
-                vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, handleReply(resultHandler));
-            }
-            else {
-                LOG.error(completionHandler.cause().getMessage(), completionHandler.cause());
-                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
-            }
-        });
+        JsonObject message = new JsonObject().put("article", article);
+        vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, handleReply(resultHandler));
     }
 
     private Handler<AsyncResult<Message<JsonObject>>> handleReply(Handler<AsyncResult<JsonObject>> resultHandler) {

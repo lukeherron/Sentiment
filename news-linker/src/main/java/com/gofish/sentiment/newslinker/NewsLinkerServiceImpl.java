@@ -31,16 +31,6 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
 
         JsonObject message = new JsonObject().put("article", article);
         vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
-
-//        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
-//            if (completionHandler.succeeded()) {
-//                JsonObject message = new JsonObject().put("article", article);
-//                vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
-//            }
-//            else {
-//                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
-//            }
-//        });
     }
 
     private Handler<AsyncResult<Message<JsonObject>>> handleReply(Handler<AsyncResult<JsonObject>> resultHandler) {
