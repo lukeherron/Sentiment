@@ -19,10 +19,6 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
     public NewsLinkerServiceImpl(Vertx vertx, JsonObject config) {
         this.vertx = vertx;
         this.workerOptions = new DeploymentOptions().setConfig(config).setInstances(10).setWorker(true);
-//
-//        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
-//            System.out.println("DEPLOYED");
-//        });
     }
 
     @Override
