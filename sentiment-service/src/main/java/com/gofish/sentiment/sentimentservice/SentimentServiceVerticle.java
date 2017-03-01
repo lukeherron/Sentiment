@@ -74,7 +74,8 @@ public class SentimentServiceVerticle extends AbstractVerticle {
 
     private Future<Void> deployQueueWorkers() {
         // Deploy worker verticles which poll each pending job queue
-        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(10);
+        int instances = Runtime.getRuntime().availableProcessors();
+        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(instances);
         List<Future> deployFutures = new ArrayList<>();
 
         Arrays.asList(
