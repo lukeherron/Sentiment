@@ -183,10 +183,7 @@ public class StorageWorker extends AbstractVerticle {
         final JsonObject findQuery = messageBody.getJsonObject("findQuery");
         final FindOptions findOptions = new FindOptions().setFields(new JsonObject().put("_id", 1)).setLimit(1);
 
-        LOG.info("Checking if collection " + collectionName + " contains article");
-
         mongo.findWithOptionsObservable(collectionName, findQuery, findOptions)
-                .doOnNext(LOG::info)
                 .subscribe(
                         result -> message.reply(!result.isEmpty()),
                         failure -> message.fail(1, failure.getMessage()),

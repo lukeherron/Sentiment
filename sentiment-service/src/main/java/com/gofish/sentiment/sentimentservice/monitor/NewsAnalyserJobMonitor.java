@@ -77,7 +77,8 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
     }
 
     private void startJob(JsonObject jsonJob) {
-        AnalyserJob job = new AnalyserJob(jsonJob);
+        final AnalyserJob job = new AnalyserJob(jsonJob);
+        final AnalyserJob original = job.copy(); // Backup original before changing state or making changes
         job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news analysis for job: " + job.getJobId());
@@ -85,8 +86,8 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         EventBusService.<NewsAnalyserService>getProxyObservable(serviceDiscovery, NewsAnalyserService.class.getName())
                 .flatMap(service -> getAnalyseSentimentObservable(service, job.getArticle().copy()))
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, job, result),
-                        failure -> processFailedJob(job, failure),
+                        result -> processCompletedJob(workingQueue, original, result),
+                        failure -> processFailedJob(original, failure),
                         () -> LOG.info("Completed news analysis job"));
     }
 

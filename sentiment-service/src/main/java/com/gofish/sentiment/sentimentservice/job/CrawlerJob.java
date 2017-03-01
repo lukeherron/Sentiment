@@ -30,8 +30,8 @@ public class CrawlerJob extends AbstractJob {
     }
 
     @Override
-    public Job copy() {
-        return new CrawlerJob(query);
+    public CrawlerJob copy() {
+        return new CrawlerJob(this.toJson().copy());
     }
 
 //    @Override

@@ -32,8 +32,8 @@ public class LinkerJob extends AbstractJob {
     }
 
     @Override
-    public Job copy() {
-        return new LinkerJob(article.copy());
+    public LinkerJob copy() {
+        return new LinkerJob(this.toJson().copy());
     }
 
 //    @Override

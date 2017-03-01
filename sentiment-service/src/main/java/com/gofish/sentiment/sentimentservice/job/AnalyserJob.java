@@ -32,8 +32,8 @@ public class AnalyserJob extends AbstractJob {
     }
 
     @Override
-    public Job copy() {
-        return new AnalyserJob(article.copy());
+    public AnalyserJob copy() {
+        return new AnalyserJob(this.toJson().copy());
     }
 
 //    @Override

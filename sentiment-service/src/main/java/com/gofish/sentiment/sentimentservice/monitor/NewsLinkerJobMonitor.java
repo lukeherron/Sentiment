@@ -77,7 +77,8 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
     }
 
     private void startJob(JsonObject jsonJob) {
-        LinkerJob job = new LinkerJob(jsonJob);
+        final LinkerJob job = new LinkerJob(jsonJob);
+        final LinkerJob original = job.copy(); // Backup original before changing state or making changes
         job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news linking for job: " + job.getJobId());
@@ -85,8 +86,8 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
                 .flatMap(service -> getLinkEntitiesObservable(service, job.getArticle().copy()))
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, job, result),
-                        failure -> processFailedJob(job, failure),
+                        result -> processCompletedJob(workingQueue, original, result),
+                        failure -> processFailedJob(original, failure),
                         () -> LOG.info("Completed news linking job"));
     }
 
