@@ -181,15 +181,20 @@ public class StorageWorker extends AbstractVerticle {
     private void hasArticle(JsonObject messageBody, Message<JsonObject> message) {
         final String collectionName = messageBody.getString("collectionName");
         final JsonObject findQuery = messageBody.getJsonObject("findQuery");
-        final FindOptions findOptions = new FindOptions().setFields(new JsonObject().put("_id", 1)).setLimit(1);
+        //final FindOptions findOptions = new FindOptions().setFields(new JsonObject().put("_id", 1)).setLimit(1);
+        final FindOptions findOptions = new FindOptions().setLimit(1);
 
         LOG.info("Checking if collection " + collectionName + " contains article");
 
-        mongo.findWithOptionsObservable(collectionName, findQuery, findOptions).isEmpty().subscribe(
-                hasArticle -> message.reply(hasArticle),
-                failure -> message.fail(1, failure.getMessage()),
-                () -> vertx.undeploy(deploymentID())
-        );
+        mongo.findWithOptionsObservable(collectionName, findQuery, findOptions)
+                .doOnNext(LOG::info)
+                .subscribe(
+                        result -> {
+                            System.out.println("HAS ARTICLE? " + !result.isEmpty());
+                            message.reply(!result.isEmpty());
+                        },
+                        failure -> message.fail(1, failure.getMessage()),
+                        () -> vertx.undeploy(deploymentID()));
     }
 
     /**

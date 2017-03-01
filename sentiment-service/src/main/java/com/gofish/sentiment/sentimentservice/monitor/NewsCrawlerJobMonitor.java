@@ -7,6 +7,7 @@ import com.gofish.sentiment.sentimentservice.article.SentimentArticle;
 import com.gofish.sentiment.sentimentservice.job.*;
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
@@ -23,7 +24,6 @@ import rx.Observable;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * @author Luke Herron
@@ -91,8 +91,6 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         CrawlerJob originalJob = new CrawlerJob(job.toJson());
         RedisTransaction transaction = actionClient.transaction();
 
-        Observable<StorageService> storageService = EventBusService.getProxyObservable(serviceDiscovery, StorageService.class.getName());
-
         EventBusService.<NewsCrawlerService>getProxyObservable(serviceDiscovery, NewsCrawlerService.class.getName())
                 .flatMap(service -> {
                     ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
@@ -101,19 +99,18 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                     return observable;
                 })
                 .doOnNext(job::setResult)
-                .flatMap(result -> Observable.from(result.getJsonArray("value")))
-                .map(article -> (JsonObject) article)
-                .map(SentimentArticle::new)
-                .filter(article -> {
-                    AtomicBoolean hasArticle = new AtomicBoolean();
-                    storageService.flatMap(service -> {
-                        ObservableFuture<Boolean> observable = RxHelper.observableFuture();
-                        service.hasArticle(job.getQuery(), article.getName(), article.getDescription(), observable.toHandler());
-                        return observable;
-                    }).subscribe(hasArticle::set);
-
-                    return hasArticle.get();
-                })
+                .flatMap(result -> Observable.from(result.getJsonArray("value"))
+                        .map(article -> (JsonObject) article)
+                        .map(SentimentArticle::new)
+                        .flatMap(article -> EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName())
+                                .flatMap(service -> {
+                                    ObservableFuture<Boolean> observable = RxHelper.observableFuture();
+                                    service.hasArticle(job.getQuery(), article.getName(), article.getDescription(), observable.toHandler());
+                                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
+                                    return observable;
+                                })
+                                .filter(hasArticle -> !hasArticle)
+                                .map(hasArticle -> article)))
                 .concatMap(article -> {
                     LOG.info(article.getUUID());
 
@@ -136,23 +133,28 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                     return Observable.zip(newsAnalyser, newsLinker, (analyserJob, linkerJob) ->
                             new SentimentArticle(new JsonObject().mergeIn(analyserJob.getResult()).mergeIn(linkerJob.getResult())));
                 })
-                .doOnNext(article -> LOG.info("Completed merging analyser and linking job results. Merging updated article back into original"))
-                .map(article -> {
-                    job.getResult().getJsonArray("value").stream()
-                            .map(originalArticle -> (JsonObject) originalArticle)
-                            .map(SentimentArticle::new)
-                            .filter(originalArticle -> originalArticle.getUUID().equals(article.getUUID()))
-                            .forEach(originalArticle -> originalArticle.mergeIn(article.toJson()));
-
-                    return job;
-                })
-                .lastOrDefault(job)
-                .doOnNext(crawlerJob -> {
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, storageService);
-                    LOG.info("All articles processed");
-                })
+                .map(SentimentArticle::toJson)
+                .toList()
+                .map(JsonArray::new)
+//                .map(article -> {
+//                    job.getResult().getJsonArray("value").stream()
+//                            .map(originalArticle -> (JsonObject) originalArticle)
+//                            .map(SentimentArticle::new)
+//                            .filter(originalArticle -> originalArticle.getUUID().equals(article.getUUID()))
+//                            .forEach(originalArticle -> originalArticle.mergeIn(article.toJson()));
+//
+//                    return job;
+//                })
+//                .lastOrDefault(job)
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, originalJob, result.getResult()),
+                        result -> {
+                            // Replace original news crawler results with he filtered article results which contains the
+                            // analyser and linking results. This will likely reduce a result which contains less
+                            // articles, as we have filtered out those which already exist in our database.
+                            job.getResult().remove("value");
+                            job.getResult().put("value", result);
+                            processCompletedJob(workingQueue, originalJob, job.getResult());
+                        },
                         failure -> processFailedJob(originalJob, failure),
                         () -> LOG.info("Completed news search crawl for job: " + job.getJobId())
                 );
