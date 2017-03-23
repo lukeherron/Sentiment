@@ -36,8 +36,6 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
                 resultHandler.handle(Future.succeededFuture(result));
             }
             else {
-                System.out.println("ERROR ERROR ERROR");
-                System.out.println(replyHandler.cause().getMessage());
                 resultHandler.handle(Future.failedFuture(replyHandler.cause()));
             }
         };
