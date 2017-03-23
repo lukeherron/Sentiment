@@ -102,7 +102,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 request.write(chunk);
             }
             catch (Throwable t) {
-                t.printStackTrace();
+                LOG.error(t.getMessage(), t.getCause());
                 messageHandler.fail(2, "Invalid Request");
             }
         });
