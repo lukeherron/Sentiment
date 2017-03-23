@@ -22,13 +22,9 @@ public class AnalyserJob extends AbstractJob {
 
     public AnalyserJob(JsonObject json) {
         super(json.getString("jobId"));
-        article = json.getJsonObject("article");
+        article = json.getJsonObject("payload");
 
         AnalyserJobConverter.fromJson(json, this);
-    }
-
-    public JsonObject getArticle() {
-        return article;
     }
 
     @Override
@@ -36,15 +32,15 @@ public class AnalyserJob extends AbstractJob {
         return new AnalyserJob(this.toJson().copy());
     }
 
-//    @Override
-//    public long getTimeout() {
-//        return Math.round(5L * 0.5 * (Math.pow(2, getAttempts()) - 1));
-//    }
+    @Override
+    public JsonObject getPayload() {
+        return article;
+    }
 
     @Override
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        AnalyserJobConverter.toJson(this, json); // Needs to be auto-generated first
+        AnalyserJobConverter.toJson(this, json);
 
         return json;
     }
