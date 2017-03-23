@@ -123,7 +123,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     private HttpClientOptions getHttpClientOptions() {
         return new HttpClientOptions()
                 .setPipelining(true)
-                .setPipeliningLimit(workerInstances)
+                .setPipeliningLimit(10)
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
