@@ -92,10 +92,11 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         RedisTransaction transaction = actionClient.transaction();
 
         LOG.info("Starting news search for job: " + job.getJobId());
+        String query = job.getPayload().getString("query");
         EventBusService.<NewsCrawlerService>getProxyObservable(serviceDiscovery, NewsCrawlerService.class.getName())
                 .flatMap(service -> {
                     ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.crawlQuery(job.getQuery(), observable.toHandler());
+                    service.crawlQuery(query, observable.toHandler());
                     ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
                     return observable;
                 })
@@ -106,7 +107,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                         .flatMap(article -> EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName())
                                 .flatMap(service -> {
                                     ObservableFuture<Boolean> observable = RxHelper.observableFuture();
-                                    service.hasArticle(job.getQuery(), article.getName(), article.getDescription(), observable.toHandler());
+                                    service.hasArticle(query, article.getName(), article.getDescription(), observable.toHandler());
                                     ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
                                     return observable;
                                 })
@@ -154,7 +155,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                             // articles, as we have filtered out those which already exist in our database.
                             job.getResult().remove("value");
                             job.getResult().put("value", result);
-                            processCompletedJob(workingQueue, original, job.getResult());
+                            processCompletedJob(original, job.getResult());
                         },
                         failure -> processFailedJob(original, failure),
                         () -> LOG.info("Completed news search crawl for job: " + job.getJobId())
@@ -219,24 +220,25 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         return newsLinkerFuture;
     }
 
-    private void processCompletedJob(WorkingQueue workingQueue, CrawlerJob job, JsonObject jobResult) {
+    private void processCompletedJob(CrawlerJob job, JsonObject result) {
         LOG.info("Processing of job " + job.getJobId() + " in " + workingQueue + " complete");
 
         // Save the results to persistent storage and remove the job from the queue
+        String query = job.getPayload().getString("query");
         EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName())
                 .flatMap(service -> {
                     ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.saveArticles(job.getQuery(), jobResult.getJsonArray("value"), observable.toHandler());
+                    service.saveArticles(query, job.getResult().getJsonArray("value"), observable.toHandler());
                     ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
                     return observable;
                 })
                 .doOnNext(LOG::info)
-                .flatMap(saveResult -> actionClient.lremObservable(workingQueue.toString(), 0, job.toJson().encode()))
+                .flatMap(saveResult -> actionClient.lremObservable(workingQueue.toString(), 0, job.encode()))
                 .doOnNext(x -> LOG.info(job.toJson().encode()))
                 .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
                 .subscribe(
-                        result -> {
-                            job.setResult(jobResult);
+                        removeResult -> {
+                            job.setResult(result);
                             job.setState(Job.State.COMPLETE);
                             announceJobResult(job);
                         },
@@ -247,20 +249,19 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
     private void processFailedJob(CrawlerJob job, Throwable error) {
         LOG.error("Failed to process job: " + job.getJobId(), error);
 
-        CrawlerJob original = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
+        CrawlerJob original = job.copy();
         job.incrementAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
         RetryStrategyFactory.calculate(job, error);
 
         RedisTransaction transaction = actionClient.transaction();
-
         transaction.multiObservable().delay(job.getTimeout(), TimeUnit.MILLISECONDS)
                 .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_CRAWLER.toString(), 0, original.encode()))
                 .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_CRAWLER.toString(), job.encode()))
                 .flatMap(x -> transaction.execObservable())
                 .subscribe(
-                        result -> LOG.info(result.encodePrettily()),
+                        result -> LOG.info("Re-queued failed crawler job: " + result),
                         failure -> transaction.discardObservable(),
-                        () -> LOG.info("Re-queued news crawler job"));
+                        () -> LOG.info("Re-queue complete"));
 
         announceJobResult(job, error);
     }
