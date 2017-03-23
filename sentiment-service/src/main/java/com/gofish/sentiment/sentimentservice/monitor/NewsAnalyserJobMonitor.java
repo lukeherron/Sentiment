@@ -79,14 +79,18 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
     private void startJob(JsonObject jsonJob) {
         final AnalyserJob job = new AnalyserJob(jsonJob);
         final AnalyserJob original = job.copy(); // Backup original before changing state or making changes
-        job.setState(Job.State.ACTIVE);
+        //job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news analysis for job: " + job.getJobId());
 
         EventBusService.<NewsAnalyserService>getProxyObservable(serviceDiscovery, NewsAnalyserService.class.getName())
-                .flatMap(service -> getAnalyseSentimentObservable(service, job.getArticle().copy()))
+                .flatMap(service -> {
+                    Observable<JsonObject> sentiment = getAnalyseSentimentObservable(service, job.getPayload());
+                    job.setState(Job.State.ACTIVE);
+                    return sentiment;
+                })
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, original, result),
+                        result -> processCompletedJob(original, result),
                         failure -> processFailedJob(original, failure),
                         () -> LOG.info("Completed news analysis job"));
     }
@@ -98,14 +102,14 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         return observable.map(article::mergeIn);
     }
 
-    private void processCompletedJob(WorkingQueue workingQueue, AnalyserJob job, JsonObject jobResult) {
+    private void processCompletedJob(AnalyserJob job, JsonObject result) {
         LOG.info("Processing of job " + job.getJobId() + " in " + workingQueue + " complete");
 
-        actionClient.lremObservable(workingQueue.toString(), 0, job.toJson().encode())
+        actionClient.lremObservable(workingQueue.toString(), 0, job.encode())
                 .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
                 .subscribe(
-                        result -> {
-                            job.setResult(jobResult);
+                        removeResult -> {
+                            job.setResult(result);
                             job.setState(Job.State.COMPLETE);
                             announceJobResult(job);
                         },
@@ -116,21 +120,20 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
     private void processFailedJob(AnalyserJob job, Throwable error) {
         LOG.error("Failed to process job: " + job.getJobId(), error);
 
-        Job originalJob = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
+        AnalyserJob original = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
         job.incrementAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
         RetryStrategyFactory.calculate(job, error);
 
         RedisTransaction transaction = actionClient.transaction();
-
         transaction.multiObservable()
                 .delay(job.getTimeout(), TimeUnit.MILLISECONDS)
-                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_ANALYSER.toString(), 0, originalJob.encode()))
+                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_ANALYSER.toString(), 0, original.encode()))
                 .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_ANALYSER.toString(), job.encode()))
                 .flatMap(x -> transaction.execObservable())
                 .subscribe(
-                        result -> LOG.info(result.encodePrettily()),
+                        result -> LOG.info("Re-queued failed analyser job: " + result),
                         failure -> transaction.discardObservable(),
-                        () -> LOG.info("Re-queued news analyser job"));
+                        () -> LOG.info("Re-queue complete"));
 
         announceJobResult(job, error);
     }
@@ -142,7 +145,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
 
     private void announceJobResult(Job job, Throwable error) {
         SentimentArticle article = new SentimentArticle(job.getResult());
-        vertx.eventBus().publish("news-analyser:error:article:" + article.getUUID(), new JsonObject()
+        vertx.eventBus().publish("news-analyser:article:error:" + article.getUUID(), new JsonObject()
                 .put("error", error.getMessage())
                 .put("retryStrategy", job.getRetryStrategy()));
     }
