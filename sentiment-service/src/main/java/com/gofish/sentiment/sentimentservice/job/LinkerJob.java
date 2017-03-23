@@ -22,13 +22,9 @@ public class LinkerJob extends AbstractJob {
 
     public LinkerJob(JsonObject json) {
         super(json.getString("jobId"));
-        article = json.getJsonObject("article");
+        article = json.getJsonObject("payload");
 
         LinkerJobConverter.fromJson(json, this);
-    }
-
-    public JsonObject getArticle() {
-        return article;
     }
 
     @Override
@@ -36,15 +32,15 @@ public class LinkerJob extends AbstractJob {
         return new LinkerJob(this.toJson().copy());
     }
 
-//    @Override
-//    public long getTimeout() {
-//        return 0;
-//    }
+    @Override
+    public JsonObject getPayload() {
+        return article;
+    }
 
     @Override
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        LinkerJobConverter.toJson(this, json); // Needs to be auto-generated first
+        LinkerJobConverter.toJson(this, json);
 
         return json;
     }
