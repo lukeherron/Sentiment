@@ -11,8 +11,6 @@ public class CrawlerJob extends AbstractJob {
 
     private final String query;
 
-    // TODO: add metrics
-
     public CrawlerJob(String query) {
         this.query = query;
     }
@@ -20,13 +18,9 @@ public class CrawlerJob extends AbstractJob {
     public CrawlerJob(JsonObject json) {
         // JobConverter only populates fields that have a setter, so we update the rest manually
         super(json.getString("jobId"));
-        query = json.getString("query");
+        query = json.getJsonObject("payload").getString("query");
 
         CrawlerJobConverter.fromJson(json, this); // needs to be auto-generated
-    }
-
-    public String getQuery() {
-        return query;
     }
 
     @Override
@@ -34,15 +28,15 @@ public class CrawlerJob extends AbstractJob {
         return new CrawlerJob(this.toJson().copy());
     }
 
-//    @Override
-//    public long getTimeout() {
-//        return Math.round(5L * 0.5 * (Math.pow(2, getAttempts()) - 1));
-//    }
+    @Override
+    public JsonObject getPayload() {
+        return new JsonObject().put("query", query);
+    }
 
     @Override
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        CrawlerJobConverter.toJson(this, json); // Needs to be auto-generated first
+        CrawlerJobConverter.toJson(this, json);
 
         return json;
     }
