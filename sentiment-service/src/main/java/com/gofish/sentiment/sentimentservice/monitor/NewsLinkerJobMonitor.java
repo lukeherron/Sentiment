@@ -60,7 +60,7 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         transferJobObservable(pendingQueue, workingQueue)
                 .repeat()
                 .map(JsonObject::new)
-                .subscribe(this::startJob, LOG::error, ()-> LOG.info("COMPLETED"));
+                .subscribe(this::startJob, LOG::error, ()-> LOG.info("News Linker job transfer complete"));
     }
 
     private Observable<String> transferJobObservable(PendingQueue pendingQueue, WorkingQueue workingQueue) {
@@ -79,14 +79,18 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
     private void startJob(JsonObject jsonJob) {
         final LinkerJob job = new LinkerJob(jsonJob);
         final LinkerJob original = job.copy(); // Backup original before changing state or making changes
-        job.setState(Job.State.ACTIVE);
+        //job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news linking for job: " + job.getJobId());
 
         EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
-                .flatMap(service -> getLinkEntitiesObservable(service, job.getArticle().copy()))
+                .flatMap(service -> {
+                    Observable<JsonObject> entities = getLinkEntitiesObservable(service, job.getPayload());
+                    job.setState(Job.State.ACTIVE);
+                    return entities;
+                })
                 .subscribe(
-                        result -> processCompletedJob(workingQueue, original, result),
+                        result -> processCompletedJob(original, result),
                         failure -> processFailedJob(original, failure),
                         () -> LOG.info("Completed news linking job"));
     }
@@ -98,14 +102,14 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         return observable.map(json::mergeIn);
     }
 
-    private void processCompletedJob(WorkingQueue workingQueue, LinkerJob job, JsonObject jobResult) {
+    private void processCompletedJob(LinkerJob job, JsonObject result) {
         LOG.info("Processing of job " + job.getJobId() + " in " + workingQueue + " complete");
 
-        actionClient.lremObservable(workingQueue.toString(), 0, job.toJson().encode())
+        actionClient.lremObservable(workingQueue.toString(), 0, job.encode())
                 .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
                 .subscribe(
-                        result -> {
-                            job.setResult(jobResult);
+                        removeResult -> {
+                            job.setResult(result);
                             job.setState(Job.State.COMPLETE);
                             announceJobResult(job);
                         },
@@ -116,20 +120,20 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
     private void processFailedJob(LinkerJob job, Throwable error) {
         LOG.error("Failed to process job: " + job.getJobId(), error);
 
-        Job originalJob = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
+        LinkerJob original = job.copy(); // We need to make a copy to ensure redis can find the original job in the working queue
         job.incrementAttempts(); // Important to set this as it determines the fallback timeout based on retry attempts
         RetryStrategyFactory.calculate(job, error);
 
         RedisTransaction transaction = actionClient.transaction();
-
-        transaction.multiObservable().delay(job.getTimeout(), TimeUnit.MILLISECONDS)
-                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_LINKER.toString(), 0, originalJob.encode()))
+        transaction.multiObservable()
+                .delay(job.getTimeout(), TimeUnit.MILLISECONDS)
+                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_LINKER.toString(), 0, original.encode()))
                 .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_LINKER.toString(), job.encode()))
                 .flatMap(x -> transaction.execObservable())
                 .subscribe(
-                        result -> LOG.info(result.encodePrettily()),
+                        result -> LOG.info("Re-queued failed linker job: " + result),
                         failure -> transaction.discardObservable(),
-                        () -> LOG.info("Re-queued news linker job"));
+                        () -> LOG.info("Re-queue complete"));
 
         announceJobResult(job, error);
     }
