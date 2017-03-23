@@ -1,8 +1,6 @@
 package com.gofish.sentiment.sentimentservice.job;
 
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 import java.util.UUID;
 
@@ -10,8 +8,6 @@ import java.util.UUID;
  * @author Luke Herron
  */
 public abstract class AbstractJob implements Job {
-
-    private static final Logger LOG = LoggerFactory.getLogger(AbstractJob.class);
 
     private final String jobId;
     private State state = State.INACTIVE;
