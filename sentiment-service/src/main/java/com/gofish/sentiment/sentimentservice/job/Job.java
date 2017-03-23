@@ -27,6 +27,8 @@ public interface Job {
 
     void setState(State state);
 
+    JsonObject getPayload();
+
     int getAttempts();
 
     void incrementAttempts();
