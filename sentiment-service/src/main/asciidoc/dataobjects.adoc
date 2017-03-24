@@ -11,9 +11,9 @@
 [frame="topbot"]
 |===
 ^|Name | Type ^| Description
-|[[article]]`article`|`Json object`|-
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
+|[[payload]]`payload`|`Json object`|-
 |[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
@@ -33,7 +33,7 @@
 ^|Name | Type ^| Description
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
-|[[query]]`query`|`String`|-
+|[[payload]]`payload`|`Json object`|-
 |[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
@@ -51,9 +51,9 @@
 [frame="topbot"]
 |===
 ^|Name | Type ^| Description
-|[[article]]`article`|`Json object`|-
 |[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
+|[[payload]]`payload`|`Json object`|-
 |[[result]]`result`|`Json object`|-
 |[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
