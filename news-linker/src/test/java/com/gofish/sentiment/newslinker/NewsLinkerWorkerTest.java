@@ -3,7 +3,8 @@ package com.gofish.sentiment.newslinker;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
-import io.vertx.core.eventbus.DeliveryOptions;
+import io.vertx.core.eventbus.ReplyException;
+import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -98,17 +99,15 @@ public class NewsLinkerWorkerTest {
                 .put("description", "test description")
                 .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test"))));
 
-        final JsonObject errorResponse = new JsonObject().put("error", new JsonObject()
+        final JsonObject newsLinkerError = new JsonObject().put("error", new JsonObject()
                 .put("statusCode", 429)
-                .put("message", "Rate limit exceeded. Try again in 1 seconds"));
+                .put("message", "Too many requests. Please try again in 2 seconds"));
 
-        mockBodyHandler(errorResponse);
+        mockBodyHandler(newsLinkerError);
 
-        // Change the reply timeout before sending the message. If we fail to do this, then the default timeout will
-        // be observed (usually 30 seconds), slowing down the unit test considerably
-        DeliveryOptions deliveryOptions = new DeliveryOptions().setSendTimeout(500);
-        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, deliveryOptions, context.asyncAssertFailure(result -> {
-            context.assertEquals("Timed out after waiting " + deliveryOptions.getSendTimeout() + "(ms) for a reply. address: 1", result.getMessage());
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
+            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
+            context.assertEquals(newsLinkerError.encode(), cause.getMessage());
         }));
     }
 
@@ -140,10 +139,9 @@ public class NewsLinkerWorkerTest {
 
         mockBodyHandler(invalidEntityLinkResponse);
 
-        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
-            // As the response did not contain any info that could be linked, we should be receiving back the original
-            // article contained inside the message, with no changes
-            context.assertEquals(message.getJsonObject("article"), result.body());
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
+            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
+            context.assertEquals(invalidEntityLinkResponse.encode(), cause.getMessage());
         }));
     }
 

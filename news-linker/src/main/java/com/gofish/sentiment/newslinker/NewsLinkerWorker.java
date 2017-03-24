@@ -1,6 +1,5 @@
 package com.gofish.sentiment.newslinker;
 
-import com.gofish.sentiment.common.http.ResponseHandler;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
@@ -8,6 +7,8 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
@@ -81,7 +82,11 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 LOG.info("Calling Entity Linking API");
 
                 request.toObservable()
-                        .flatMap(ResponseHandler::handle)
+                        .flatMap(response -> {
+                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                            response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
+                            return observable;
+                        })
                         .flatMap(result -> this.addNewEntities(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
@@ -97,15 +102,17 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 request.write(chunk);
             }
             catch (Throwable t) {
-                t.printStackTrace();
+                LOG.error(t.getMessage(), t.getCause());
                 messageHandler.fail(2, "Invalid Request");
             }
         });
     }
 
     private Observable<JsonObject> addNewEntities(JsonObject article, JsonObject linkerResponse) {
+        JsonArray responseEntities = Optional.ofNullable(linkerResponse.getJsonArray("entities"))
+                .orElseThrow(() -> new RuntimeException(linkerResponse.encode()));
+
         JsonArray articleEntities = article.getJsonArray("about", new JsonArray());
-        JsonArray responseEntities = linkerResponse.getJsonArray("entities", new JsonArray());
 
         // Add any entities to articleEntities if they can only be found in responseEntities
         responseEntities.stream()
@@ -130,7 +137,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
     private HttpClientOptions getHttpClientOptions() {
         return new HttpClientOptions()
                 .setPipelining(true)
-                .setPipeliningLimit(8)
+                .setPipeliningLimit(10)
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);

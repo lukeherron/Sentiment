@@ -57,13 +57,13 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         // is actually up and running (and responds to a ping) before launching the workers.
         RedisClient.create(vertx, new RedisOptions().setHost("redis")).ping(jobQueueFuture.completer());
 
-
         // Once we know this verticles service has been announced to the cluster and our job queue is up and running,
         // we can go ahead and deploy the workers that monitor our queues and the timed crawler which will start
         // generating jobs and putting them into the queues
         CompositeFuture.all(publishFuture, jobQueueFuture).setHandler(resultHandler -> {
             if (resultHandler.succeeded()) {
                 deployQueueWorkers().compose(v -> deployTimedCrawler()).setHandler(startFuture.completer());
+                //deployQueueWorkers().setHandler(startFuture.completer());
             }
             else {
                 LOG.error(resultHandler.cause());
@@ -74,7 +74,8 @@ public class SentimentServiceVerticle extends AbstractVerticle {
 
     private Future<Void> deployQueueWorkers() {
         // Deploy worker verticles which poll each pending job queue
-        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(8);
+        int instances = Runtime.getRuntime().availableProcessors();
+        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(instances);
         List<Future> deployFutures = new ArrayList<>();
 
         Arrays.asList(

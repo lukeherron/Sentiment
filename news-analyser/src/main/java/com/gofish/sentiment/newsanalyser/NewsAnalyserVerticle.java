@@ -1,6 +1,7 @@
 package com.gofish.sentiment.newsanalyser;
 
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
@@ -29,7 +30,10 @@ public class NewsAnalyserVerticle extends AbstractVerticle {
         LOG.info("Bringing up NewsAnalyserVerticle");
 
         JsonObject config = Optional.ofNullable(config())
-                .orElseThrow(() -> new RuntimeException("Could bout load analyser configuration"));
+                .orElseThrow(() -> new RuntimeException("Could not load analyser configuration"));
+
+        DeploymentOptions workerOptions = new DeploymentOptions().setConfig(config).setInstances(10).setWorker(true);
+        vertx.deployVerticle(NewsAnalyserWorker.class.getName(), workerOptions);
 
         NewsAnalyserService newsAnalyserService = NewsAnalyserService.create(vertx, config);
         messageConsumer = ProxyHelper.registerService(NewsAnalyserService.class, vertx, newsAnalyserService, NewsAnalyserService.ADDRESS);

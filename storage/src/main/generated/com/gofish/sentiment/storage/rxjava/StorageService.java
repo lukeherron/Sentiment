@@ -145,6 +145,32 @@ public class StorageService {
   }
 
   /**
+   * Checks if an article with a specific name and description is currently contained in mongo storage
+   * @param collectionName the name of the collection that the article search will be conducted within
+   * @param articleName the name of the article which we are searching for
+   * @param articleDescription the description of the article which we are searching for
+   * @param resultHandler the result will be returned asynchronously in this handler
+   * @return 
+   */
+  public StorageService hasArticle(String collectionName, String articleName, String articleDescription, Handler<AsyncResult<Boolean>> resultHandler) { 
+    delegate.hasArticle(collectionName, articleName, articleDescription, resultHandler);
+    return this;
+  }
+
+  /**
+   * Checks if an article with a specific name and description is currently contained in mongo storage
+   * @param collectionName the name of the collection that the article search will be conducted within
+   * @param articleName the name of the article which we are searching for
+   * @param articleDescription the description of the article which we are searching for
+   * @return 
+   */
+  public Observable<Boolean> hasArticleObservable(String collectionName, String articleName, String articleDescription) { 
+    io.vertx.rx.java.ObservableFuture<Boolean> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
+    hasArticle(collectionName, articleName, articleDescription, resultHandler.toHandler());
+    return resultHandler;
+  }
+
+  /**
    * Checks if the specified collection is currently contained in mongo storage.
    * @param collectionName the name of the collection that sentiment results will be retrieved from
    * @param resultHandler the result will be returned asynchronously in this handler

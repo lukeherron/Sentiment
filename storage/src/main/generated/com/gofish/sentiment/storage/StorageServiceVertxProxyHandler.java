@@ -141,6 +141,10 @@ public class StorageServiceVertxProxyHandler extends ProxyHandler {
           service.getSentimentResults((java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;
         }
+        case "hasArticle": {
+          service.hasArticle((java.lang.String)json.getValue("collectionName"), (java.lang.String)json.getValue("articleName"), (java.lang.String)json.getValue("articleDescription"), createHandler(msg));
+          break;
+        }
         case "hasCollection": {
           service.hasCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;

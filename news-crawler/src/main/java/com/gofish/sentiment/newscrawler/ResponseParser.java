@@ -3,6 +3,8 @@ package com.gofish.sentiment.newscrawler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import java.util.UUID;
+
 /**
  * @author Luke Herron
  */
@@ -19,13 +21,14 @@ public class ResponseParser {
      */
     public JsonObject parse(JsonObject response) {
         if (!response.containsKey("value")) {
-            // We didn't receive the expected results, so don't bother parsing and simply return the response for the
-            // client to inspect.
-            return response;
+            // We didn't receive the expected results, throw an exception with the response as the exception message
+            throw new RuntimeException(response.encode());
         }
 
         JsonObject copy = response.copy(); // We will be changing the structure of the json, so make a copy to change.
         JsonArray articles = copy.getJsonArray("value").copy();
+
+        assignUUID(articles);
 
         // Our json object can contain nested json representing 'associated' articles (referred to as clusteredArticles
         // by the API). We want these articles to be stored as their own entry in the DB, so we extract them into a
@@ -39,6 +42,17 @@ public class ResponseParser {
         copy.getJsonArray("value").clear().addAll(articles);
 
         return copy;
+    }
+
+    /**
+     * Assign each article a unique ID so that we can more easily compare articles.
+     *
+     * @param articles JsonArray containing the articles to assign UUID's to
+     */
+    private void assignUUID(JsonArray articles) {
+        articles.stream().parallel()
+                .map(article -> (JsonObject) article)
+                .forEach(article -> article.put("sentimentUUID", UUID.randomUUID().toString()));
     }
 
     /**

@@ -5,6 +5,7 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.mongo.FindOptions;
 import io.vertx.ext.mongo.IndexOptions;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.Message;
@@ -63,6 +64,9 @@ public class StorageWorker extends AbstractVerticle {
                 break;
             case "getSentimentResults":
                 getSentimentResults(message.body(), message);
+                break;
+            case "hasArticle":
+                hasArticle(message.body(), message);
                 break;
             case "hasCollection":
                 hasCollection(message.body(), message);
@@ -172,6 +176,18 @@ public class StorageWorker extends AbstractVerticle {
                         failure -> message.fail(1, failure.getMessage()),
                         () -> vertx.undeploy(deploymentID())
                 );
+    }
+
+    private void hasArticle(JsonObject messageBody, Message<JsonObject> message) {
+        final String collectionName = messageBody.getString("collectionName");
+        final JsonObject findQuery = messageBody.getJsonObject("findQuery");
+        final FindOptions findOptions = new FindOptions().setFields(new JsonObject().put("_id", 1)).setLimit(1);
+
+        mongo.findWithOptionsObservable(collectionName, findQuery, findOptions)
+                .subscribe(
+                        result -> message.reply(!result.isEmpty()),
+                        failure -> message.fail(1, failure.getMessage()),
+                        () -> vertx.undeploy(deploymentID()));
     }
 
     /**

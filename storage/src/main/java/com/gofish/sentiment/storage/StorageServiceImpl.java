@@ -70,6 +70,16 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
+    public StorageService hasArticle(String collectionName, String articleName, String articleDescription, Handler<AsyncResult<Boolean>> resultHandler) {
+        JsonObject findQuery = new JsonObject().put("name", articleName).put("description", articleDescription);
+        JsonObject message = new JsonObject().put("collectionName", collectionName).put("findQuery", findQuery);
+
+        getResult(message, deliveryOptions.get("hasArticle"), handleReply(resultHandler, Boolean.class));
+
+        return this;
+    }
+
+    @Override
     public StorageService hasCollection(String collectionName, Handler<AsyncResult<Boolean>> resultHandler) {
         JsonObject message = new JsonObject().put("collectionName", collectionName);
 
@@ -141,6 +151,7 @@ public class StorageServiceImpl implements StorageService {
         deliveryOptions.put("createIndex", new DeliveryOptions().addHeader("action", "createIndex"));
         deliveryOptions.put("getCollections", new DeliveryOptions().addHeader("action", "getCollections"));
         deliveryOptions.put("getSentimentResults", new DeliveryOptions().addHeader("action", "getSentimentResults"));
+        deliveryOptions.put("hasArticle", new DeliveryOptions().addHeader("action", "hasArticle"));
         deliveryOptions.put("hasCollection", new DeliveryOptions().addHeader("action", "hasCollection"));
         deliveryOptions.put("saveArticles", new DeliveryOptions().addHeader("action", "saveArticles"));
         deliveryOptions.put("isIndexPresent", new DeliveryOptions().addHeader("action", "isIndexPresent"));

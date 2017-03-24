@@ -18,22 +18,15 @@ public class NewsLinkerServiceImpl implements NewsLinkerService {
 
     public NewsLinkerServiceImpl(Vertx vertx, JsonObject config) {
         this.vertx = vertx;
-        this.workerOptions = new DeploymentOptions().setConfig(config).setWorker(true);
+        this.workerOptions = new DeploymentOptions().setConfig(config).setInstances(10).setWorker(true);
     }
 
     @Override
     public void linkEntities(JsonObject article, Handler<AsyncResult<JsonObject>> resultHandler) {
         LOG.info("Starting entity linking");
 
-        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions, completionHandler -> {
-            if (completionHandler.succeeded()) {
-                JsonObject message = new JsonObject().put("article", article);
-                vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
-            }
-            else {
-                resultHandler.handle(Future.failedFuture(completionHandler.cause()));
-            }
-        });
+        JsonObject message = new JsonObject().put("article", article);
+        vertx.eventBus().send(NewsLinkerWorker.ADDRESS, message, handleReply(resultHandler));
     }
 
     private Handler<AsyncResult<Message<JsonObject>>> handleReply(Handler<AsyncResult<JsonObject>> resultHandler) {

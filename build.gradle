@@ -7,7 +7,7 @@ group 'gofish'
 version '1.0-SNAPSHOT'
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.3'
+    gradleVersion = '3.4'
     distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
@@ -107,6 +107,13 @@ configure (subprojects) { project ->
     tasks.withType(Test) {
         reports {
             junitXml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
             html.enabled = true
         }
     }

@@ -1,12 +1,13 @@
 package com.gofish.sentiment.newscrawler;
 
-import com.gofish.sentiment.common.http.ResponseHandler;
 import io.vertx.core.Future;
 import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.rx.java.ObservableFuture;
+import io.vertx.rx.java.RxHelper;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
@@ -92,8 +93,11 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                     .putHeader("Ocp-Apim-Subscription-Key", apiKey);
 
             request.toObservable()
-                    .flatMap(ResponseHandler::handle)
-                    .doOnNext(result -> LOG.debug(result.encodePrettily()))
+                    .flatMap(response -> {
+                        ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
+                        response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
+                        return observable;
+                    })
                     .map(responseParser::parse)
                     .subscribe(
                             result -> messageHandler.reply(result),
@@ -119,7 +123,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     private HttpClientOptions getHttpClientOptions() {
         return new HttpClientOptions()
                 .setPipelining(true)
-                .setPipeliningLimit(workerInstances)
+                .setPipeliningLimit(10)
                 .setIdleTimeout(0)
                 .setSsl(true)
                 .setKeepAlive(true);
