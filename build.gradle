@@ -44,7 +44,7 @@ configure (subprojects) { project ->
         compile ("biz.paluch.logging:logstash-gelf:1.10.0")
 
         compileOnly ("io.vertx:vertx-codegen:${vertxVersion}")
-        //compileOnly ("io.vertx:vertx-codegen:processor")
+        compileOnly ("io.vertx:vertx-codegen:processor")
 
         testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")

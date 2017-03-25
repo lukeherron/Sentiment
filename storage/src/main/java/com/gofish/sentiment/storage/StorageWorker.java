@@ -12,6 +12,7 @@ import io.vertx.rxjava.core.eventbus.Message;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.ext.mongo.MongoClient;
 import rx.Observable;
+import rx.Single;
 
 /**
  * @author Luke Herron
@@ -94,15 +95,12 @@ public class StorageWorker extends AbstractVerticle {
         LOG.info("Creating collection: " + collectionName);
 
         hasCollection(collectionName)
-                .filter(isPresent -> {
-                    if (isPresent) message.fail(2, "Collection already exists");
-                    return !isPresent;
-                })
-                .flatMap(isPresent -> mongo.createCollectionObservable(collectionName))
+                .flatMap(isPresent -> isPresent ?
+                        Single.error(new Throwable("Index already exists")) :
+                        mongo.rxCreateCollection(collectionName))
                 .subscribe(
                         result -> message.reply(result),
-                        failure -> message.fail(1, failure.getMessage()),
-                        () -> vertx.undeploy(deploymentID())
+                        failure -> message.fail(1, failure.getMessage())
                 );
     }
 
@@ -123,12 +121,11 @@ public class StorageWorker extends AbstractVerticle {
 
         isIndexPresent(indexName, collectionName)
                 .flatMap(isPresent -> isPresent ?
-                        Observable.error(new Throwable("Index already exists")) :
-                        mongo.createIndexWithOptionsObservable(collectionName, collectionIndex, indexOptions))
+                        Single.error(new Throwable("Index already exists")) :
+                        mongo.rxCreateIndexWithOptions(collectionName, collectionIndex, indexOptions))
                 .subscribe(
                         result -> message.reply(result),
-                        failure -> message.fail(1, failure.getMessage()),
-                        () -> vertx.undeploy(deploymentID())
+                        failure -> message.fail(1, failure.getMessage())
                 );
     }
 
@@ -140,10 +137,9 @@ public class StorageWorker extends AbstractVerticle {
     private void getCollections(Message<JsonObject> message) {
         LOG.info("Retrieving collections");
 
-        mongo.getCollectionsObservable().map(JsonArray::new).subscribe(
+        mongo.rxGetCollections().map(JsonArray::new).subscribe(
                 collections -> message.reply(collections),
-                failure -> message.fail(1, failure.getMessage()),
-                () -> vertx.undeploy(deploymentID())
+                failure -> message.fail(1, failure.getMessage())
         );
     }
 
@@ -168,13 +164,12 @@ public class StorageWorker extends AbstractVerticle {
                     .add(new JsonObject().put("$project", new JsonObject().put("_id", 0).put("score", 1)))
                 );
 
-        mongo.runCommandObservable("aggregate", command)
+        mongo.rxRunCommand("aggregate", command)
                 .map(response -> response.getJsonArray("result", new JsonArray()))
                 .map(json -> json.isEmpty() ? new JsonObject() : json.getJsonObject(0))
                 .subscribe(
                         result -> message.reply(result),
-                        failure -> message.fail(1, failure.getMessage()),
-                        () -> vertx.undeploy(deploymentID())
+                        failure -> message.fail(1, failure.getMessage())
                 );
     }
 
@@ -183,11 +178,11 @@ public class StorageWorker extends AbstractVerticle {
         final JsonObject findQuery = messageBody.getJsonObject("findQuery");
         final FindOptions findOptions = new FindOptions().setFields(new JsonObject().put("_id", 1)).setLimit(1);
 
-        mongo.findWithOptionsObservable(collectionName, findQuery, findOptions)
+        mongo.rxFindWithOptions(collectionName, findQuery, findOptions)
                 .subscribe(
                         result -> message.reply(!result.isEmpty()),
-                        failure -> message.fail(1, failure.getMessage()),
-                        () -> vertx.undeploy(deploymentID()));
+                        failure -> message.fail(1, failure.getMessage())
+                );
     }
 
     /**
@@ -203,8 +198,7 @@ public class StorageWorker extends AbstractVerticle {
 
         hasCollection(collectionName).subscribe(
                 hasCollection -> message.reply(hasCollection),
-                failure -> message.fail(1, failure.getMessage()),
-                () -> vertx.undeploy(deploymentID())
+                failure -> message.fail(1, failure.getMessage())
         );
     }
 
@@ -214,8 +208,8 @@ public class StorageWorker extends AbstractVerticle {
      * @param collectionName the collection name to search for
      * @return observable which emits the results of the search
      */
-    private Observable<Boolean> hasCollection(String collectionName) {
-        return mongo.getCollectionsObservable().map(collections -> collections.contains(collectionName));
+    private Single<Boolean> hasCollection(String collectionName) {
+        return mongo.rxGetCollections().map(collections -> collections.contains(collectionName));
     }
 
     /**
@@ -232,8 +226,7 @@ public class StorageWorker extends AbstractVerticle {
 
         isIndexPresent(indexName, collectionName).subscribe(
                 isPresent -> message.reply(isPresent),
-                failure -> message.fail(1, failure.getMessage() + ":isIndexPresent"),
-                () -> vertx.undeploy(deploymentID())
+                failure -> message.fail(1, failure.getMessage() + ":isIndexPresent")
         );
     }
 
@@ -244,12 +237,13 @@ public class StorageWorker extends AbstractVerticle {
      * @param collectionName collection name to search within
      * @return observable which emits the results of the search
      */
-    private Observable<Boolean> isIndexPresent(String indexName, String collectionName) {
-        return mongo.listIndexesObservable(collectionName)
-                .flatMap(Observable::from)
+    private Single<Boolean> isIndexPresent(String indexName, String collectionName) {
+        return mongo.rxListIndexes(collectionName)
+                .flatMapObservable(Observable::from)
                 .map(index -> ((JsonObject) index).getString("name").equals(indexName))
                 .takeUntil(nameExists -> nameExists)
-                .lastOrDefault(false);
+                .lastOrDefault(false)
+                .toSingle();
     }
 
     /**
@@ -269,19 +263,14 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Saving articles to collection " + collectionName);
 
-        mongo.runCommandObservable("insert", command).subscribe(
+        mongo.rxRunCommand("insert", command).subscribe(
                 result -> message.reply(result),
-                failure -> message.fail(1, failure.getMessage()),
-                () -> vertx.undeploy(deploymentID())
+                failure -> message.fail(1, failure.getMessage())
         );
     }
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("Unregistered message consumer for mongo worker instance")
-        );
+        messageConsumer.rxUnregister().subscribe(stopFuture::complete, stopFuture::fail);
     }
 }
