@@ -145,10 +145,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        messageConsumer.unregisterObservable().subscribe(
-                stopFuture::complete,
-                stopFuture::fail,
-                () -> LOG.info("NewsLinkerWorker messageConsumer unregistered")
-        );
+        httpClient.close();
+        messageConsumer.rxUnregister().subscribe(stopFuture::complete, stopFuture::fail);
     }
 }
