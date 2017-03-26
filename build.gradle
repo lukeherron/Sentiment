@@ -41,10 +41,10 @@ configure (subprojects) { project ->
         compile ("io.vertx:vertx-rx-java:${vertxVersion}")
         compile ("io.vertx:vertx-service-discovery:${vertxVersion}")
         compile ("io.vertx:vertx-service-proxy:${vertxVersion}")
+        compile ("io.vertx:vertx-service-proxy:${vertxVersion}:processor")
         compile ("biz.paluch.logging:logstash-gelf:1.10.0")
 
         compileOnly ("io.vertx:vertx-codegen:${vertxVersion}")
-        compileOnly ("io.vertx:vertx-codegen:processor")
 
         testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")

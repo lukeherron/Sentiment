@@ -7,6 +7,7 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.serviceproxy.ProxyHelper;
+import rx.Single;
 
 /**
  * @author Luke Herron
@@ -27,4 +28,6 @@ public interface NewsAnalyserService {
     }
 
     void analyseSentiment(JsonObject json, Handler<AsyncResult<JsonObject>> resultHandler);
+
+    Single<JsonObject> rxAnalyseSentiment(JsonObject json);
 }
