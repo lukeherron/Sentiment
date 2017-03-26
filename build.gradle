@@ -41,7 +41,7 @@ configure (subprojects) { project ->
         compile ("io.vertx:vertx-rx-java:${vertxVersion}")
         compile ("io.vertx:vertx-service-discovery:${vertxVersion}")
         compile ("io.vertx:vertx-service-proxy:${vertxVersion}")
-        compile ("io.vertx:vertx-service-proxy:${vertxVersion}:processor")
+        //compile ("io.vertx:vertx-service-proxy:${vertxVersion}:processor")
         compile ("biz.paluch.logging:logstash-gelf:1.10.0")
 
         compileOnly ("io.vertx:vertx-codegen:${vertxVersion}")
@@ -63,8 +63,15 @@ configure (subprojects) { project ->
         options.compilerArgs = [
                 "-proc:only",
                 "-processor", "io.vertx.codegen.CodeGenProcessor",
-                "-AoutputDirectory=${project.projectDir}/src/main"
+                "-Acodegen.output=${project.projectDir}/src/main"
         ]
+    }
+
+    compileJava {
+        targetCompatibility = 1.8
+        sourceCompatibility = 1.8
+
+        dependsOn annotationProcessing
     }
 
     task jacocoTestITReport(type: JacocoReport) {

@@ -5,8 +5,6 @@ import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.SingleOnSubscribeAdapter;
-import rx.Single;
 
 /**
  * @author Luke Herron
@@ -30,12 +28,6 @@ public class NewsAnalyserServiceImpl implements NewsAnalyserService {
         JsonObject message = new JsonObject().put("article", article);
         vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, handleReply(resultHandler));
     }
-
-    @Override
-    public Single<JsonObject> rxAnalyseSentiment(JsonObject article) {
-        return Single.create(new SingleOnSubscribeAdapter<>(handler -> analyseSentiment(article, handler)));
-    }
-
 
     private Handler<AsyncResult<Message<JsonObject>>> handleReply(Handler<AsyncResult<JsonObject>> resultHandler) {
         return replyHandler -> {

@@ -12,12 +12,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.redis.RedisOptions;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.redis.RedisTransaction;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
 import io.vertx.rxjava.servicediscovery.ServiceReference;
 import rx.Observable;
+import rx.Single;
 
 import java.util.concurrent.TimeUnit;
 
@@ -73,7 +75,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         serviceDiscovery.rxGetRecord(record -> record.getName().equals(NewsAnalyserService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<NewsAnalyserService>get)
-                .flatMap(service -> service.rxAnalyseSentiment(article)
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.analyseSentiment(article, handler)))
                         .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .map(article::mergeIn)
                 .subscribe(
