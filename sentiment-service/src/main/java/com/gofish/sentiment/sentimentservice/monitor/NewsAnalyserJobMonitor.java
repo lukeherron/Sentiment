@@ -107,13 +107,14 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         RedisTransaction transaction = actionClient.transaction();
         transaction.rxMulti()
                 .delay(job.getTimeout(), TimeUnit.MILLISECONDS)
-                .map(x -> transaction.rxLrem(WorkingQueue.NEWS_ANALYSER.toString(), 0, original.encode()))
-                .map(x -> transaction.rxLpush(PendingQueue.NEWS_ANALYSER.toString(), job.encode()))
-                .map(x -> transaction.rxExec())
+                .flatMap(x -> transaction.rxLrem(WorkingQueue.NEWS_ANALYSER.toString(), 0, original.encode()))
+                .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_ANALYSER.toString(), job.encode()))
+                .flatMap(x -> transaction.rxExec())
                 .subscribe(
                         result -> LOG.info("Re-queued failed analyser job: " + result),
                         failure -> transaction.rxDiscard());
 
+        // TODO: should this call be made in the onSuccess of the above subscribe method?
         announceJobResult(job, error);
     }
 
