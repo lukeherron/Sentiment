@@ -85,6 +85,9 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
                 // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
                 // out of necessity but we do not wait on it and simply return the original query
                 .map(service -> service.analyseSentiment(query, resultHandler -> {}))
-                .map(service -> query);
+                .map(service -> {
+                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
+                    return query;
+                });
     }
 }
