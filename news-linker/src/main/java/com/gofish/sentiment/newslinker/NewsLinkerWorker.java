@@ -14,7 +14,7 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
-import rx.Observable;
+import rx.Single;
 
 import java.util.Optional;
 
@@ -87,7 +87,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                             response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
                             return observable;
                         })
-                        .flatMap(result -> this.addNewEntities(article, result))
+                        .flatMapSingle(result -> rxAddNewEntities(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
@@ -108,7 +108,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         });
     }
 
-    private Observable<JsonObject> addNewEntities(JsonObject article, JsonObject linkerResponse) {
+    private Single<JsonObject> rxAddNewEntities(JsonObject article, JsonObject linkerResponse) {
         JsonArray responseEntities = Optional.ofNullable(linkerResponse.getJsonArray("entities"))
                 .orElseThrow(() -> new RuntimeException(linkerResponse.encode()));
 
@@ -125,7 +125,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                         .put("readLink", ""))
                 .forEach(articleEntities::add);
 
-        return Observable.just(article);
+        return Single.just(article);
     }
 
     /**

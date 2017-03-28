@@ -14,7 +14,7 @@ import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.core.http.HttpClient;
 import io.vertx.rxjava.core.http.HttpClientRequest;
-import rx.Observable;
+import rx.Single;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -81,7 +81,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
                             response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
                             return observable;
                         })
-                        .flatMap(result -> this.addSentimentResults(article, result))
+                        .flatMapSingle(result -> rxAddSentimentResults(article, result))
                         .subscribe(
                                 result -> messageHandler.reply(result),
                                 failure -> messageHandler.fail(1, failure.getMessage()),
@@ -102,13 +102,13 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         });
     }
 
-    private Observable<JsonObject> addSentimentResults(JsonObject article, JsonObject analysisResponse) {
+    private Single<JsonObject> rxAddSentimentResults(JsonObject article, JsonObject analysisResponse) {
         JsonArray documents = Optional.ofNullable(analysisResponse.getJsonArray("documents"))
                 .orElseThrow(() -> new RuntimeException(analysisResponse.encode()));
 
         article.put("sentiment", documents.getJsonObject(0));
 
-        return Observable.just(article);
+        return Single.just(article);
     }
 
     /**

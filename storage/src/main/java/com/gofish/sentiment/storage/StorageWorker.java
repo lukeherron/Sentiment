@@ -94,7 +94,7 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Creating collection: " + collectionName);
 
-        hasCollection(collectionName)
+        rxHasCollection(collectionName)
                 .flatMap(isPresent -> isPresent ?
                         Single.error(new Throwable("Index already exists")) :
                         mongo.rxCreateCollection(collectionName))
@@ -119,7 +119,7 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Creating index: " + indexName);
 
-        isIndexPresent(indexName, collectionName)
+        rxIsIndexPresent(indexName, collectionName)
                 .flatMap(isPresent -> isPresent ?
                         Single.error(new Throwable("Index already exists")) :
                         mongo.rxCreateIndexWithOptions(collectionName, collectionIndex, indexOptions))
@@ -196,7 +196,7 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Checking if collection " + collectionName + " exists");
 
-        hasCollection(collectionName).subscribe(
+        rxHasCollection(collectionName).subscribe(
                 hasCollection -> message.reply(hasCollection),
                 failure -> message.fail(1, failure.getMessage())
         );
@@ -208,7 +208,7 @@ public class StorageWorker extends AbstractVerticle {
      * @param collectionName the collection name to search for
      * @return observable which emits the results of the search
      */
-    private Single<Boolean> hasCollection(String collectionName) {
+    private Single<Boolean> rxHasCollection(String collectionName) {
         return mongo.rxGetCollections().map(collections -> collections.contains(collectionName));
     }
 
@@ -224,7 +224,7 @@ public class StorageWorker extends AbstractVerticle {
 
         LOG.info("Checking if index " + indexName + " exists in collection " + collectionName);
 
-        isIndexPresent(indexName, collectionName).subscribe(
+        rxIsIndexPresent(indexName, collectionName).subscribe(
                 isPresent -> message.reply(isPresent),
                 failure -> message.fail(1, failure.getMessage() + ":isIndexPresent")
         );
@@ -237,7 +237,7 @@ public class StorageWorker extends AbstractVerticle {
      * @param collectionName collection name to search within
      * @return observable which emits the results of the search
      */
-    private Single<Boolean> isIndexPresent(String indexName, String collectionName) {
+    private Single<Boolean> rxIsIndexPresent(String indexName, String collectionName) {
         return mongo.rxListIndexes(collectionName)
                 .flatMapObservable(Observable::from)
                 .map(index -> ((JsonObject) index).getString("name").equals(indexName))
