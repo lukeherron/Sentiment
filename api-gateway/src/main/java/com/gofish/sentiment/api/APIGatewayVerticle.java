@@ -36,7 +36,7 @@ public class APIGatewayVerticle extends AbstractVerticle {
                 final String query = q.toLowerCase();
                 HttpServerResponse response = requestHandler.response();
 
-                getSentiment(query).subscribe(
+                rxGetSentiment(query).subscribe(
                         result -> {
                             response.end(String.valueOf(result));
                             LOG.info("Finished retrieving sentiment");
@@ -72,7 +72,7 @@ public class APIGatewayVerticle extends AbstractVerticle {
                 failure -> startFuture.fail(failure));
     }
 
-    private Single<JsonObject> getSentiment(String query) {
+    private Single<JsonObject> rxGetSentiment(String query) {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(SentimentService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<SentimentService>get)
