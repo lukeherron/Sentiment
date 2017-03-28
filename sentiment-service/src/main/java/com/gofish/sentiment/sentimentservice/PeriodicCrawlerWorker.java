@@ -58,7 +58,7 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
                         .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .flatMap(Observable::from)
                 .map(query -> (String) query)
-                .flatMapSingle(this::startAnalysis)
+                .flatMapSingle(this::rxStartAnalysis)
                 .subscribe(
                         result -> LOG.info("Queued crawl request for query: " + result),
                         failure -> LOG.error(failure),
@@ -77,7 +77,7 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
                 .flatMap(i -> Observable.timer(i, TimeUnit.SECONDS));
     }
 
-    private Single<String> startAnalysis(String query) {
+    private Single<String> rxStartAnalysis(String query) {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(SentimentService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<SentimentService>get)
