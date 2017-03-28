@@ -81,28 +81,30 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         String query = job.getPayload().getString("query");
 
         LOG.info("Starting news search for job: " + job.getJobId());
-        getNewsCrawlerService()
+        rxGetNewsCrawlerService()
                 .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.crawlQuery(query, handler)))
                         .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .doOnSuccess(job::setResult)
-                .flatMapObservable(result -> filterExistingArticles(query, result))
-                .concatMap(this::mergeJobResults)
+                .flatMapObservable(result -> rxFilterExistingArticles(query, result))
+                .concatMap(this::rxMergeJobResults)
                 .map(SentimentArticle::toJson)
                 .toList()
                 .map(JsonArray::new)
-                .subscribe(result -> {
-                    job.getResult().remove("value");
-                    job.getResult().put("value", result);
-                    processCompletedJob(original, job.getResult());
-                    LOG.info("Completed news search crawl for job: " + job.getJobId());
-                }, failure -> processFailedJob(original, failure));
+                .subscribe(
+                        result -> {
+                            job.getResult().remove("value");
+                            job.getResult().put("value", result);
+                            processCompletedJob(original, job.getResult());
+                        },
+                        failure -> processFailedJob(original, failure),
+                        () -> LOG.info("Completed news search crawl for job: " + job.getJobId()));
     }
 
-    private Observable<SentimentArticle> filterExistingArticles(String query, JsonObject result) {
+    private Observable<SentimentArticle> rxFilterExistingArticles(String query, JsonObject result) {
         return Observable.from(result.getJsonArray("value"))
                 .map(article -> (JsonObject) article)
                 .map(SentimentArticle::new)
-                .flatMap(article -> getStorageService()
+                .flatMap(article -> rxGetStorageService()
                         .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<Boolean>(handler -> service.hasArticle(query, article.getName(), article.getDescription(), handler)))
                                 .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                         .toObservable()
@@ -110,12 +112,12 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                         .map(hasArticle -> article));
     }
 
-    private Observable<SentimentArticle> mergeJobResults(SentimentArticle article) {
+    private Observable<SentimentArticle> rxMergeJobResults(SentimentArticle article) {
         RedisTransaction transaction = actionClient.transaction();
         LOG.info(article.getUUID());
 
-        final ObservableFuture<AnalyserJob> newsAnalyser = getNewsAnalyserObservable(article);
-        final ObservableFuture<LinkerJob> newsLinker = getNewsLinkerObservable(article);
+        final ObservableFuture<AnalyserJob> newsAnalyser = rxGetNewsAnalysis(article);
+        final ObservableFuture<LinkerJob> newsLinker = rxGetNewsLinking(article);
 
         transaction.rxMulti()
                 .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_ANALYSER.toString(), new AnalyserJob(article).encode()))
@@ -130,23 +132,25 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                         failure -> LOG.error(failure.getMessage(), failure)
                 );
 
-        return Observable.zip(newsAnalyser, newsLinker, (analyserJob, linkerJob) ->
-            new SentimentArticle(new JsonObject().mergeIn(analyserJob.getResult()).mergeIn(linkerJob.getResult())));
+        return Observable.zip(newsAnalyser, newsLinker, ((analyserJob, linkerJob) -> {
+            JsonObject mergedArticle = new JsonObject().mergeIn(analyserJob.getResult()).mergeIn(linkerJob.getResult());
+            return new SentimentArticle(mergedArticle);
+        }));
     }
 
-    private Single<StorageService> getStorageService() {
+    private Single<StorageService> rxGetStorageService() {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(StorageService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<StorageService>get);
     }
 
-    private Single<NewsCrawlerService> getNewsCrawlerService() {
+    private Single<NewsCrawlerService> rxGetNewsCrawlerService() {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(NewsCrawlerService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<NewsCrawlerService>get);
     }
 
-    private ObservableFuture<AnalyserJob> getNewsAnalyserObservable(SentimentArticle article) {
+    private ObservableFuture<AnalyserJob> rxGetNewsAnalysis(SentimentArticle article) {
         final ObservableFuture<AnalyserJob> newsAnalyserFuture = RxHelper.observableFuture();
         final String analyserSuccessAddress = "news-analyser:article:" + article.getUUID();
 
@@ -175,7 +179,8 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         return newsAnalyserFuture;
     }
 
-    private ObservableFuture<LinkerJob> getNewsLinkerObservable(SentimentArticle article) {
+    private ObservableFuture<LinkerJob> rxGetNewsLinking(SentimentArticle article) {
+
         final ObservableFuture<LinkerJob> newsLinkerFuture = RxHelper.observableFuture();
 
         final String linkerSuccessAddress = "news-linker:article:" + article.getUUID();
@@ -209,7 +214,7 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
 
         // Save the results to persistent storage and remove the job from the queue
         String query = job.getPayload().getString("query");
-        getStorageService()
+        rxGetStorageService()
                 .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
                         service.saveArticles(query, job.getResult().getJsonArray("value"), handler))))
                 .doOnEach(LOG::info)
