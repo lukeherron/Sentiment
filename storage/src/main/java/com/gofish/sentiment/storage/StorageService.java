@@ -17,7 +17,7 @@ import io.vertx.serviceproxy.ProxyHelper;
 @VertxGen
 public interface StorageService {
 
-    String NAME = "sentiment-eventbus-service";
+    String NAME = "storage-eventbus-service";
     String ADDRESS = "sentiment.storage";
 
     static StorageService create(Vertx vertx, JsonObject config) {

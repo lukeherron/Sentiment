@@ -2,18 +2,17 @@ package com.gofish.sentiment.sentimentservice;
 
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.Future;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.redis.RedisOptions;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
-import io.vertx.rxjava.servicediscovery.types.EventBusService;
+import io.vertx.rxjava.servicediscovery.ServiceReference;
 import rx.Observable;
+import rx.Single;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -38,16 +37,14 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
         redis = RedisClient.create(vertx, new RedisOptions().setHost("redis"));
         serviceDiscovery = ServiceDiscovery.create(vertx);
 
-        // We need to be certain that the job queues are up and running before we generate any jobs
-        redis.ping(resultHandler -> {
-            if (resultHandler.succeeded()) {
-                startPeriodicCrawl();
-                startFuture.complete();
-            }
-            else {
-                startFuture.fail(resultHandler.cause());
-            }
-        });
+        // Continually ping the redis monitor client every 5 seconds until we get a pong response
+        redis.rxPing()
+                .toObservable()
+                .retryWhen(errors -> errors.flatMap(error -> Observable.timer(5, TimeUnit.SECONDS)))
+                .subscribe(pong -> {
+                    startPeriodicCrawl();
+                    startFuture.complete();
+                }, startFuture::fail);
     }
 
     private void startPeriodicCrawl() {
@@ -55,12 +52,13 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
 
         vertx.periodicStream(config.getInteger("timer.delay", DEFAULT_TIMER_DELAY))
                 .toObservable()
-                .flatMap(id -> getStorageServiceObservable())
-                .retryWhen(this::getRetryStrategy)
-                .flatMap(this::getCollectionsObservable)
+                .flatMapSingle(id -> rxGetStorageService())
+                .retryWhen(this::rxGetRetryStrategy)
+                .flatMapSingle(service -> Single.create(new SingleOnSubscribeAdapter<>(service::getCollections))
+                        .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .flatMap(Observable::from)
                 .map(query -> (String) query)
-                .flatMap(this::startAnalysis)
+                .flatMapSingle(this::startAnalysis)
                 .subscribe(
                         result -> LOG.info("Queued crawl request for query: " + result),
                         failure -> LOG.error(failure),
@@ -68,30 +66,28 @@ public class PeriodicCrawlerWorker extends AbstractVerticle {
                 );
     }
 
-    private Observable<StorageService> getStorageServiceObservable() {
-        return EventBusService.getProxyObservable(serviceDiscovery, StorageService.class.getName());
+    private Single<StorageService> rxGetStorageService() {
+        return serviceDiscovery.rxGetRecord(record -> record.getName().equals(StorageService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<StorageService>get);
     }
 
-    private Observable<Long> getRetryStrategy(Observable<? extends Throwable> attempts) {
+    private Observable<Long> rxGetRetryStrategy(Observable<? extends Throwable> attempts) {
         return attempts.zipWith(Observable.range(1, 100), (n, i) -> i)
                 .flatMap(i -> Observable.timer(i, TimeUnit.SECONDS));
     }
 
-    private Observable<JsonArray> getCollectionsObservable(StorageService storageService) {
-        ObservableFuture<JsonArray> observable = RxHelper.observableFuture();
-        storageService.getCollections(observable.toHandler());
-        ServiceDiscovery.releaseServiceObject(serviceDiscovery, storageService);
-        return observable;
-    }
-
-    private Observable<String> startAnalysis(String query) {
-        return EventBusService.<SentimentService>getProxyObservable(serviceDiscovery, SentimentService.class.getName())
-                .flatMap(sentimentService -> {
-                    // We aren't concerned with returning results from the analysis, as we won't be using them
-                    // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
-                    // out of necessity but we do not wait on it and simply return the original query
-                    sentimentService.analyseSentiment(query, resultHandler -> {});
-                    return Observable.just(query);
+    private Single<String> startAnalysis(String query) {
+        return serviceDiscovery.rxGetRecord(record -> record.getName().equals(SentimentService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<SentimentService>get)
+                // We aren't concerned with returning results from the analysis, as we won't be using them
+                // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
+                // out of necessity but we do not wait on it and simply return the original query
+                .map(service -> service.analyseSentiment(query, resultHandler -> {}))
+                .map(service -> {
+                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
+                    return query;
                 });
     }
 }

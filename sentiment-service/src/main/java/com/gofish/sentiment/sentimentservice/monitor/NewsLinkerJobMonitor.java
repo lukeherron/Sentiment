@@ -12,14 +12,14 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.redis.RedisOptions;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.redis.RedisTransaction;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
-import io.vertx.rxjava.servicediscovery.types.EventBusService;
+import io.vertx.rxjava.servicediscovery.ServiceReference;
 import rx.Observable;
+import rx.Single;
 
 import java.util.concurrent.TimeUnit;
 
@@ -43,78 +43,58 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         monitorClient = RedisClient.create(vertx, redisOptions);
         serviceDiscovery = ServiceDiscovery.create(vertx);
 
-        monitorClient.ping(resultHandler -> {
-            if (resultHandler.succeeded()) {
-                monitorJobQueue(pendingQueue, workingQueue);
-                startFuture.complete();
-            }
-            else {
-                startFuture.fail(resultHandler.cause());
-            }
-        });
+        // Continually ping the redis monitor client every 5 seconds until we get a pong response
+        monitorClient.rxPing()
+                .toObservable()
+                .retryWhen(errors -> errors.flatMap(error -> Observable.timer(5, TimeUnit.SECONDS)))
+                .subscribe(pong -> {
+                    monitorJobQueue(pendingQueue, workingQueue);
+                    startFuture.complete();
+                }, startFuture::fail);
     }
 
     private void monitorJobQueue(PendingQueue pendingQueue, WorkingQueue workingQueue) {
         LOG.info("Monitoring " + pendingQueue);
 
-        transferJobObservable(pendingQueue, workingQueue)
+        monitorClient.rxBrpoplpush(pendingQueue.toString(), workingQueue.toString(), 0)
+                .toObservable()
                 .repeat()
                 .map(JsonObject::new)
-                .subscribe(this::startJob, LOG::error, ()-> LOG.info("News Linker job transfer complete"));
-    }
-
-    private Observable<String> transferJobObservable(PendingQueue pendingQueue, WorkingQueue workingQueue) {
-        // When calling redis clients' brpoplpushObservable it appears unable to chain a repeat() call as onComplete is
-        // never called (as per rxJava docs, repeat occurs once onComplete happens). For this reason, I've taken the
-        // route of wrapping this call in our own observable, and calling onComplete immediately after onNext
-        return Observable.create(subscriber -> {
-            monitorClient.brpoplpushObservable(pendingQueue.toString(), workingQueue.toString(), 0)
-                    .subscribe(onNext -> {
-                        subscriber.onNext(onNext);
-                        subscriber.onCompleted();
-                    }, subscriber::onError);
-        });
+                .subscribe(this::startJob, LOG::error);
     }
 
     private void startJob(JsonObject jsonJob) {
         final LinkerJob job = new LinkerJob(jsonJob);
         final LinkerJob original = job.copy(); // Backup original before changing state or making changes
-        //job.setState(Job.State.ACTIVE);
+
+        JsonObject article = job.getPayload();
+        job.setState(Job.State.ACTIVE);
 
         LOG.info("Starting news linking for job: " + job.getJobId());
 
-        EventBusService.<NewsLinkerService>getProxyObservable(serviceDiscovery, NewsLinkerService.class.getName())
-                .flatMap(service -> {
-                    Observable<JsonObject> entities = getLinkEntitiesObservable(service, job.getPayload());
-                    job.setState(Job.State.ACTIVE);
-                    return entities;
-                })
+        serviceDiscovery.rxGetRecord(record -> record.getName().equals(NewsLinkerService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<NewsLinkerService>get)
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.linkEntities(article, handler)))
+                    .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
+                .map(article::mergeIn)
                 .subscribe(
                         result -> processCompletedJob(original, result),
-                        failure -> processFailedJob(original, failure),
-                        () -> LOG.info("Completed news linking job"));
-    }
-
-    private Observable<JsonObject> getLinkEntitiesObservable(NewsLinkerService service, JsonObject json) {
-        ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-        service.linkEntities(json, observable.toHandler());
-        ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-        return observable.map(json::mergeIn);
+                        failure -> processFailedJob(original, failure)
+                );
     }
 
     private void processCompletedJob(LinkerJob job, JsonObject result) {
         LOG.info("Processing of job " + job.getJobId() + " in " + workingQueue + " complete");
 
-        actionClient.lremObservable(workingQueue.toString(), 0, job.encode())
-                .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
-                .subscribe(
-                        removeResult -> {
+        actionClient.rxLrem(workingQueue.toString(), 0, job.encode())
+                .subscribe(removed -> {
                             job.setResult(result);
                             job.setState(Job.State.COMPLETE);
                             announceJobResult(job);
-                        },
-                        failure -> LOG.error(failure.getMessage(), failure),
-                        () -> LOG.info("Finished processing completed job in queue: " + workingQueue));
+                            LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed);
+                            LOG.info("Finished processing completed job in queue: " + workingQueue);
+                        }, failure -> LOG.error(failure.getMessage(), failure));
     }
 
     private void processFailedJob(LinkerJob job, Throwable error) {
@@ -125,16 +105,16 @@ public class NewsLinkerJobMonitor extends AbstractVerticle {
         RetryStrategyFactory.calculate(job, error);
 
         RedisTransaction transaction = actionClient.transaction();
-        transaction.multiObservable()
+        transaction.rxMulti()
                 .delay(job.getTimeout(), TimeUnit.MILLISECONDS)
-                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_LINKER.toString(), 0, original.encode()))
-                .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_LINKER.toString(), job.encode()))
-                .flatMap(x -> transaction.execObservable())
+                .flatMap(x -> transaction.rxLrem(WorkingQueue.NEWS_LINKER.toString(), 0, original.encode()))
+                .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_LINKER.toString(), job.encode()))
+                .flatMap(x -> transaction.rxExec())
                 .subscribe(
                         result -> LOG.info("Re-queued failed linker job: " + result),
-                        failure -> transaction.discardObservable(),
-                        () -> LOG.info("Re-queue complete"));
+                        failure -> transaction.rxDiscard());
 
+        // TODO: should this call be made in the onSuccess of the above subscribe method?
         announceJobResult(job, error);
     }
 

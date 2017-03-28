@@ -14,13 +14,15 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.redis.RedisOptions;
 import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
 import io.vertx.rxjava.redis.RedisClient;
 import io.vertx.rxjava.redis.RedisTransaction;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
-import io.vertx.rxjava.servicediscovery.types.EventBusService;
+import io.vertx.rxjava.servicediscovery.ServiceReference;
 import rx.Observable;
+import rx.Single;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -45,37 +47,24 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         monitorClient = RedisClient.create(vertx, redisOptions);
         serviceDiscovery = ServiceDiscovery.create(vertx);
 
-        actionClient.ping(resultHandler -> {
-            if (resultHandler.succeeded()) {
-                monitorJobQueue(pendingQueue, workingQueue);
-                startFuture.complete();
-            }
-            else {
-                startFuture.fail(resultHandler.cause());
-            }
-        });
+        // Continually ping the redis monitor client every 5 seconds until we get a pong response
+        monitorClient.rxPing()
+                .toObservable()
+                .retryWhen(errors -> errors.flatMap(error -> Observable.timer(5, TimeUnit.SECONDS)))
+                .subscribe(pong -> {
+                    monitorJobQueue(pendingQueue, workingQueue);
+                    startFuture.complete();
+                }, startFuture::fail);
     }
 
     private void monitorJobQueue(PendingQueue pendingQueue, WorkingQueue workingQueue) {
         LOG.info("Monitoring " + pendingQueue);
 
-        transferJobObservable(pendingQueue, workingQueue)
+        monitorClient.rxBrpoplpush(pendingQueue.toString(), workingQueue.toString(), 0)
+                .toObservable()
                 .repeat()
                 .map(JsonObject::new)
-                .subscribe(this::startJob, LOG::error, () -> LOG.info("COMPLETED"));
-    }
-
-    private Observable<String> transferJobObservable(PendingQueue pendingQueue, WorkingQueue workingQueue) {
-        // When calling redis clients' brpoplpushObservable it appears unable to chain a repeat() call as onComplete is
-        // never called (as per rxJava docs, repeat occurs once onComplete happens). For this reason, I've taken the
-        // route of wrapping this call in our own observable, and calling onComplete immediately after onNext
-        return Observable.create(subscriber -> {
-            monitorClient.brpoplpushObservable(pendingQueue.toString(), workingQueue.toString(), 0)
-                    .subscribe(onNext -> {
-                        subscriber.onNext(onNext);
-                        subscriber.onCompleted();
-                    }, subscriber::onError);
-        });
+                .subscribe(this::startJob, LOG::error);
     }
 
     private void startJob(JsonObject jsonJob) {
@@ -89,77 +78,72 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         final CrawlerJob original = job.copy();
         job.setState(Job.State.ACTIVE);
 
-        RedisTransaction transaction = actionClient.transaction();
+        String query = job.getPayload().getString("query");
 
         LOG.info("Starting news search for job: " + job.getJobId());
-        String query = job.getPayload().getString("query");
-        EventBusService.<NewsCrawlerService>getProxyObservable(serviceDiscovery, NewsCrawlerService.class.getName())
-                .flatMap(service -> {
-                    ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.crawlQuery(query, observable.toHandler());
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-                    return observable;
-                })
-                .doOnNext(job::setResult)
-                .flatMap(result -> Observable.from(result.getJsonArray("value"))
-                        .map(article -> (JsonObject) article)
-                        .map(SentimentArticle::new)
-                        .flatMap(article -> EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName())
-                                .flatMap(service -> {
-                                    ObservableFuture<Boolean> observable = RxHelper.observableFuture();
-                                    service.hasArticle(query, article.getName(), article.getDescription(), observable.toHandler());
-                                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-                                    return observable;
-                                })
-                                .filter(hasArticle -> !hasArticle)
-                                .map(hasArticle -> article)))
-                .concatMap(article -> {
-                    LOG.info(article.getUUID());
-
-                    final ObservableFuture<AnalyserJob> newsAnalyser = getNewsAnalyserObservable(article);
-                    final ObservableFuture<LinkerJob> newsLinker = getNewsLinkerObservable(article);
-
-                    transaction.multiObservable()
-                            .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_ANALYSER.toString(), new AnalyserJob(article).encode()))
-                            .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_LINKER.toString(), new LinkerJob(article).encode()))
-                            .flatMap(x -> transaction.execObservable())
-                            .doOnError(error -> {
-                                LOG.error(error);
-                                transaction.discardObservable();
-                            })
-                            .subscribe(
-                                    result -> LOG.info("Pushed linker job and analyser job to pending queues: " + result.encodePrettily()),
-                                    failure -> LOG.error(failure.getMessage(), failure),
-                                    () -> LOG.info("Job transfers complete"));
-
-                    return Observable.zip(newsAnalyser, newsLinker, (analyserJob, linkerJob) ->
-                            new SentimentArticle(new JsonObject().mergeIn(analyserJob.getResult()).mergeIn(linkerJob.getResult())));
-                })
+        getNewsCrawlerService()
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.crawlQuery(query, handler)))
+                        .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
+                .doOnSuccess(job::setResult)
+                .flatMapObservable(result -> filterExistingArticles(query, result))
+                .concatMap(this::mergeJobResults)
                 .map(SentimentArticle::toJson)
                 .toList()
                 .map(JsonArray::new)
-//                .map(article -> {
-//                    job.getResult().getJsonArray("value").stream()
-//                            .map(originalArticle -> (JsonObject) originalArticle)
-//                            .map(SentimentArticle::new)
-//                            .filter(originalArticle -> originalArticle.getUUID().equals(article.getUUID()))
-//                            .forEach(originalArticle -> originalArticle.mergeIn(article.toJson()));
-//
-//                    return job;
-//                })
-//                .lastOrDefault(job)
+                .subscribe(result -> {
+                    job.getResult().remove("value");
+                    job.getResult().put("value", result);
+                    processCompletedJob(original, job.getResult());
+                    LOG.info("Completed news search crawl for job: " + job.getJobId());
+                }, failure -> processFailedJob(original, failure));
+    }
+
+    private Observable<SentimentArticle> filterExistingArticles(String query, JsonObject result) {
+        return Observable.from(result.getJsonArray("value"))
+                .map(article -> (JsonObject) article)
+                .map(SentimentArticle::new)
+                .flatMap(article -> getStorageService()
+                        .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<Boolean>(handler -> service.hasArticle(query, article.getName(), article.getDescription(), handler)))
+                                .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
+                        .toObservable()
+                        .filter(hasArticle -> !hasArticle)
+                        .map(hasArticle -> article));
+    }
+
+    private Observable<SentimentArticle> mergeJobResults(SentimentArticle article) {
+        RedisTransaction transaction = actionClient.transaction();
+        LOG.info(article.getUUID());
+
+        final ObservableFuture<AnalyserJob> newsAnalyser = getNewsAnalyserObservable(article);
+        final ObservableFuture<LinkerJob> newsLinker = getNewsLinkerObservable(article);
+
+        transaction.rxMulti()
+                .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_ANALYSER.toString(), new AnalyserJob(article).encode()))
+                .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_LINKER.toString(), new LinkerJob(article).encode()))
+                .flatMap(x -> transaction.rxExec())
+                .doOnError(error -> {
+                    LOG.error(error);
+                    transaction.rxDiscard();
+                })
                 .subscribe(
-                        result -> {
-                            // Replace original news crawler results with he filtered article results which contains the
-                            // analyser and linking results. This will likely reduce a result which contains less
-                            // articles, as we have filtered out those which already exist in our database.
-                            job.getResult().remove("value");
-                            job.getResult().put("value", result);
-                            processCompletedJob(original, job.getResult());
-                        },
-                        failure -> processFailedJob(original, failure),
-                        () -> LOG.info("Completed news search crawl for job: " + job.getJobId())
+                        result -> LOG.info("Pushed linker and analyser job to pending queues: " + result.encodePrettily()),
+                        failure -> LOG.error(failure.getMessage(), failure)
                 );
+
+        return Observable.zip(newsAnalyser, newsLinker, (analyserJob, linkerJob) ->
+            new SentimentArticle(new JsonObject().mergeIn(analyserJob.getResult()).mergeIn(linkerJob.getResult())));
+    }
+
+    private Single<StorageService> getStorageService() {
+        return serviceDiscovery.rxGetRecord(record -> record.getName().equals(StorageService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<StorageService>get);
+    }
+
+    private Single<NewsCrawlerService> getNewsCrawlerService() {
+        return serviceDiscovery.rxGetRecord(record -> record.getName().equals(NewsCrawlerService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<NewsCrawlerService>get);
     }
 
     private ObservableFuture<AnalyserJob> getNewsAnalyserObservable(SentimentArticle article) {
@@ -225,25 +209,17 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
 
         // Save the results to persistent storage and remove the job from the queue
         String query = job.getPayload().getString("query");
-        EventBusService.<StorageService>getProxyObservable(serviceDiscovery, StorageService.class.getName())
-                .flatMap(service -> {
-                    ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.saveArticles(query, job.getResult().getJsonArray("value"), observable.toHandler());
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-                    return observable;
-                })
-                .doOnNext(LOG::info)
-                .flatMap(saveResult -> actionClient.lremObservable(workingQueue.toString(), 0, job.encode()))
-                .doOnNext(x -> LOG.info(job.toJson().encode()))
-                .doOnNext(removed -> LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed))
-                .subscribe(
-                        removeResult -> {
-                            job.setResult(result);
-                            job.setState(Job.State.COMPLETE);
-                            announceJobResult(job);
-                        },
-                        failure -> LOG.error(failure.getMessage(), failure),
-                        () -> LOG.info("Finished processing completed job in queue: " + workingQueue));
+        getStorageService()
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
+                        service.saveArticles(query, job.getResult().getJsonArray("value"), handler))))
+                .doOnEach(LOG::info)
+                .flatMap(saveResult -> actionClient.rxLrem(workingQueue.toString(), 0, job.encode()))
+                .subscribe(removeResult -> {
+                    job.setResult(result);
+                    job.setState(Job.State.COMPLETE);
+                    announceJobResult(job);
+                    LOG.info("Finished processing completed job in queue: " + workingQueue);
+                }, failure -> LOG.error(failure.getMessage(), failure));
     }
 
     private void processFailedJob(CrawlerJob job, Throwable error) {
@@ -254,15 +230,15 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         RetryStrategyFactory.calculate(job, error);
 
         RedisTransaction transaction = actionClient.transaction();
-        transaction.multiObservable().delay(job.getTimeout(), TimeUnit.MILLISECONDS)
-                .flatMap(x -> transaction.lremObservable(WorkingQueue.NEWS_CRAWLER.toString(), 0, original.encode()))
-                .flatMap(x -> transaction.lpushObservable(PendingQueue.NEWS_CRAWLER.toString(), job.encode()))
-                .flatMap(x -> transaction.execObservable())
+        transaction.rxMulti().delay(job.getTimeout(), TimeUnit.MILLISECONDS)
+                .flatMap(x -> transaction.rxLrem(WorkingQueue.NEWS_CRAWLER.toString(), 0, original.encode()))
+                .flatMap(x -> transaction.rxLpush(PendingQueue.NEWS_CRAWLER.toString(), job.encode()))
+                .flatMap(x -> transaction.rxExec())
                 .subscribe(
                         result -> LOG.info("Re-queued failed crawler job: " + result),
-                        failure -> transaction.discardObservable(),
-                        () -> LOG.info("Re-queue complete"));
+                        failure -> transaction.rxDiscard());
 
+        // TODO: should this call be made in the onSuccess of the above subscribe method?
         announceJobResult(job, error);
     }
 
