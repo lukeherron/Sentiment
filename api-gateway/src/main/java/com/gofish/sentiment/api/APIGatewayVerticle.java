@@ -5,15 +5,14 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.http.HttpServerResponse;
 import io.vertx.rxjava.ext.web.Router;
 import io.vertx.rxjava.ext.web.handler.LoggerHandler;
 import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
-import io.vertx.rxjava.servicediscovery.types.EventBusService;
-import rx.Observable;
+import io.vertx.rxjava.servicediscovery.ServiceReference;
+import rx.Single;
 
 /**
  * @author Luke Herron
@@ -38,12 +37,14 @@ public class APIGatewayVerticle extends AbstractVerticle {
                 HttpServerResponse response = requestHandler.response();
 
                 getSentiment(query).subscribe(
-                        result -> response.end(String.valueOf(result)),
+                        result -> {
+                            response.end(String.valueOf(result));
+                            LOG.info("Finished retrieving sentiment");
+                        },
                         failure -> {
                             LOG.error(failure.getMessage(), failure);
                             requestHandler.fail(failure);
-                        },
-                        () -> LOG.info("Finished retrieving sentiment"));
+                        });
             }
             else {
                 requestHandler.fail(400); // Bad request
@@ -66,21 +67,17 @@ public class APIGatewayVerticle extends AbstractVerticle {
         });
 
         // Launch server and start listening
-        vertx.createHttpServer().requestHandler(router::accept).listenObservable().subscribe(
+        vertx.createHttpServer().requestHandler(router::accept).rxListen().subscribe(
                 result -> startFuture.complete(),
-                failure -> startFuture.fail(failure),
-                () -> LOG.info("HttpServer started")
-        );
+                failure -> startFuture.fail(failure));
     }
 
-    private Observable<JsonObject> getSentiment(String query) {
-        return EventBusService.<SentimentService>getProxyObservable(serviceDiscovery, SentimentService.class.getName())
-                .flatMap(service -> {
-                    ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                    service.getSentiment(query, observable.toHandler());
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-                    return observable;
-                });
+    private Single<JsonObject> getSentiment(String query) {
+        return serviceDiscovery.rxGetRecord(record -> record.getName().equals(SentimentService.NAME))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<SentimentService>get)
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.getSentiment(query, handler)))
+                    .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)));
     }
 
     @Override
