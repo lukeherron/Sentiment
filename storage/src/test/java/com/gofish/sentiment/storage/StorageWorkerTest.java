@@ -16,7 +16,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import rx.Observable;
+import rx.Single;
 
 import java.util.Collections;
 
@@ -55,10 +55,10 @@ public class StorageWorkerTest {
         final ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
         createCollectionFuture.toHandler().handle(Future.succeededFuture());
 
-        when(mongo.createCollectionObservable(anyString())).thenReturn(createCollectionFuture);
+        when(mongo.rxCreateCollection(anyString())).thenReturn(createCollectionFuture.toSingle());
 
-        when(mongo.getCollectionsObservable())
-                .thenReturn(Observable.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
+        when(mongo.rxGetCollections())
+                .thenReturn(Single.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
@@ -71,10 +71,10 @@ public class StorageWorkerTest {
         final ObservableFuture<Void> createCollectionFuture = RxHelper.observableFuture();
         createCollectionFuture.toHandler().handle(Future.succeededFuture());
 
-        when(mongo.createCollectionObservable(anyString())).thenReturn(createCollectionFuture);
+        when(mongo.rxCreateCollection(anyString())).thenReturn(createCollectionFuture.toSingle());
 
-        when(mongo.getCollectionsObservable())
-                .thenReturn(Observable.just(Collections.singletonList("testCollection")));
+        when(mongo.rxGetCollections())
+                .thenReturn(Single.just(Collections.singletonList("testCollection")));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "createCollection");
@@ -92,10 +92,10 @@ public class StorageWorkerTest {
                 .put("datePublished", 1)
                 .put("description", 1);
 
-        when(mongo.createIndexWithOptionsObservable(anyString(), any(JsonObject.class), any(IndexOptions.class)))
-                .thenReturn(createIndexFuture);
+        when(mongo.rxCreateIndexWithOptions(anyString(), any(JsonObject.class), any(IndexOptions.class)))
+                .thenReturn(createIndexFuture.toSingle());
 
-        when(mongo.listIndexesObservable(anyString())).thenReturn(Observable.just(new JsonArray()));
+        when(mongo.rxListIndexes(anyString())).thenReturn(Single.just(new JsonArray()));
 
         final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
@@ -127,11 +127,11 @@ public class StorageWorkerTest {
             .put("name", "testCollectionIndex")
             .put("ns", "DEFAULT_DB.testCollection");
 
-        when(mongo.createIndexWithOptionsObservable(anyString(), any(JsonObject.class), any(IndexOptions.class)))
-                .thenReturn(createIndexFuture);
+        when(mongo.rxCreateIndexWithOptions(anyString(), any(JsonObject.class), any(IndexOptions.class)))
+                .thenReturn(createIndexFuture.toSingle());
 
-        when(mongo.listIndexesObservable(anyString()))
-                .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
+        when(mongo.rxListIndexes(anyString()))
+                .thenReturn(Single.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
         final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
@@ -145,7 +145,7 @@ public class StorageWorkerTest {
 
     @Test
     public void testGetCollectionsRepliesWithJsonArray(TestContext context) {
-        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
+        when(mongo.rxGetCollections()).thenReturn(Single.just(Collections.singletonList("testCollection")));
 
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getCollections");
 
@@ -159,7 +159,7 @@ public class StorageWorkerTest {
 
     @Test
     public void testGetSentimentResultsRepliesWithJsonObject(TestContext context) {
-        when(mongo.runCommandObservable(anyString(), any(JsonObject.class))).thenReturn(Observable.just(new JsonObject()));
+        when(mongo.rxRunCommand(anyString(), any(JsonObject.class))).thenReturn(Single.just(new JsonObject()));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "getSentimentResults");
@@ -173,7 +173,7 @@ public class StorageWorkerTest {
 
     @Test
     public void testHasCollectionRepliesTrueIfCollectionExists(TestContext context) {
-        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("testCollection")));
+        when(mongo.rxGetCollections()).thenReturn(Single.just(Collections.singletonList("testCollection")));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
@@ -187,7 +187,7 @@ public class StorageWorkerTest {
 
     @Test
     public void testHasCollectionRepliesFalseIfCollectionDoesNotExist(TestContext context) {
-        when(mongo.getCollectionsObservable()).thenReturn(Observable.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
+        when(mongo.rxGetCollections()).thenReturn(Single.just(Collections.singletonList("notTheCollectionYouAreLookingFor")));
 
         final JsonObject message = new JsonObject().put("collectionName", "testCollection");
         final DeliveryOptions deliveryOptions = new DeliveryOptions().addHeader("action", "hasCollection");
@@ -211,8 +211,8 @@ public class StorageWorkerTest {
                 .put("name", "testCollectionIndex")
                 .put("ns", "DEFAULT_DB.testCollection");
 
-        when(mongo.listIndexesObservable(anyString()))
-                .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
+        when(mongo.rxListIndexes(anyString()))
+                .thenReturn(Single.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
         final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
@@ -239,8 +239,8 @@ public class StorageWorkerTest {
                 .put("name", "notTheCollectionYouAreLookingForIndex")
                 .put("ns", "DEFAULT_DB.notTheCollectionYouAreLookingFor");
 
-        when(mongo.listIndexesObservable(anyString()))
-                .thenReturn(Observable.just(new JsonArray().add(testCollectionIndexMongoOutput)));
+        when(mongo.rxListIndexes(anyString()))
+                .thenReturn(Single.just(new JsonArray().add(testCollectionIndexMongoOutput)));
 
         final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
@@ -257,8 +257,8 @@ public class StorageWorkerTest {
 
     @Test
     public void testSaveArticlesRepliesSuccessWithJsonObject(TestContext context) {
-        when(mongo.runCommandObservable(anyString(), any(JsonObject.class)))
-                .thenReturn(Observable.just(new JsonObject().put("status", "success")));
+        when(mongo.rxRunCommand(anyString(), any(JsonObject.class)))
+                .thenReturn(Single.just(new JsonObject().put("status", "success")));
 
         final JsonObject message = new JsonObject()
                 .put("collectionName", "testCollection")
