@@ -94,7 +94,7 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
                     announceJobResult(job);
                     LOG.info("Total number of jobs removed from " + workingQueue + " = " + removed);
                     LOG.info("Finished processing completed job in queue: " + workingQueue);
-                }, LOG::error);
+                }, failure -> LOG.error(failure.getMessage(), failure));
     }
 
     private void processFailedJob(AnalyserJob job, Throwable error) {
