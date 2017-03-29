@@ -41,14 +41,6 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     private Integer resultCount;
     private Integer workerInstances;
 
-    public NewsCrawlerWorker() {
-        // Vertx requires a default constructor
-    }
-
-    public NewsCrawlerWorker(WebClient webClient) {
-        this.webClient = webClient;
-    }
-
     public void start() throws Exception {
         LOG.info("Bringing up NewsCrawlerWorker");
 
@@ -92,15 +84,17 @@ public class NewsCrawlerWorker extends AbstractVerticle {
      * @return HttpClientOptions object to configure this verticles HttpClient
      */
     private WebClientOptions getWebClientOptions() {
+
         return new WebClientOptions()
                 .setPipelining(true)
                 .setPipeliningLimit(10)
                 .setIdleTimeout(0)
-                .setSsl(true)
+                .setSsl(!baseUrl.equalsIgnoreCase("localhost"))
                 .setKeepAlive(true);
     }
 
     private HttpRequest<JsonObject> getHttpRequest() {
+        
         return webClient.get(port, baseUrl, urlPath)
                 .putHeader("Ocp-Apim-Subscription-Key", apiKey)
                 .addQueryParam("mkt", "en-US")
