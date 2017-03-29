@@ -94,7 +94,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     }
 
     private HttpRequest<JsonObject> getHttpRequest() {
-        
+
         return webClient.get(port, baseUrl, urlPath)
                 .putHeader("Ocp-Apim-Subscription-Key", apiKey)
                 .addQueryParam("mkt", "en-US")
