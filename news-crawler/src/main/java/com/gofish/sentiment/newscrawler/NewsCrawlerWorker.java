@@ -1,18 +1,16 @@
 package com.gofish.sentiment.newscrawler;
 
 import io.vertx.core.Future;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.rxjava.core.AbstractVerticle;
-import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
-import io.vertx.rxjava.core.http.HttpClient;
-import io.vertx.rxjava.core.http.HttpClientRequest;
+import io.vertx.rxjava.ext.web.client.HttpRequest;
+import io.vertx.rxjava.ext.web.client.HttpResponse;
+import io.vertx.rxjava.ext.web.client.WebClient;
+import io.vertx.rxjava.ext.web.codec.BodyCodec;
 
 import java.util.Optional;
 
@@ -29,7 +27,7 @@ public class NewsCrawlerWorker extends AbstractVerticle {
     private static final String DEFAULT_FRESHNESS = "Day";
     private static final Logger LOG = LoggerFactory.getLogger(NewsCrawlerWorker.class);
 
-    private HttpClient httpClient;
+    private WebClient webClient;
     private MessageConsumer<JsonObject> messageConsumer;
     private ResponseParser responseParser = new ResponseParser();
 
@@ -47,8 +45,8 @@ public class NewsCrawlerWorker extends AbstractVerticle {
         // Vertx requires a default constructor
     }
 
-    public NewsCrawlerWorker(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public NewsCrawlerWorker(WebClient webClient) {
+        this.webClient = webClient;
     }
 
     public void start() throws Exception {
@@ -67,7 +65,9 @@ public class NewsCrawlerWorker extends AbstractVerticle {
         resultCount = apiConfig.getInteger("result.count", DEFAULT_RESULT_COUNT);
         workerInstances = apiConfig.getInteger("worker.instances", DEFAULT_WORKER_INSTANCES);
 
-        httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
+        webClient = Optional.ofNullable(webClient).orElseGet(() -> WebClient.create(vertx, getWebClientOptions()));
+
+        final HttpRequest<JsonObject> request = getHttpRequest();
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
             final String query = messageHandler.body().getString("query");
@@ -77,40 +77,11 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 messageHandler.fail(1, "Invalid Query");
             }
 
-            final String requestUri = String.join("", urlPath,
-                    "?q=", query,
-                    "&mkt=", "en-US",
-                    "&freshness=", freshness,
-                    "&count=", String.valueOf(resultCount));
-
-            final Buffer chunk = Buffer.buffer();
-            //final MultiMap headers = MultiMap.caseInsensitiveMultiMap().add("Ocp-Apim-Subscription-Key", apiKey);
-
-            LOG.info("Crawling query: " + query);
-
-            HttpClientRequest request = httpClient.request(HttpMethod.GET, port, baseUrl, requestUri)
-                    .putHeader("Content-Length", String.valueOf(chunk.length()))
-                    .putHeader("Ocp-Apim-Subscription-Key", apiKey);
-
-            request.toObservable()
-                    .flatMap(response -> {
-                        ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                        response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
-                        return observable;
-                    })
+            request.setQueryParam("q", query)
+                    .rxSend()
+                    .map(HttpResponse::body)
                     .map(responseParser::parse)
-                    .subscribe(
-                            result -> messageHandler.reply(result),
-                            failure -> messageHandler.fail(1, failure.getMessage()),
-                            () -> {
-                                // request.end() must occur inside onComplete to avoid 'Request already complete'
-                                // exceptions which may occure if initial request fails and a retry is necessary
-                                request.end();
-                                LOG.info("Finished crawling request: " + query);
-                            }
-                    );
-
-            request.write(chunk);
+                    .subscribe(messageHandler::reply, fail -> messageHandler.fail(1, fail.getMessage()));
         });
     }
 
@@ -120,8 +91,8 @@ public class NewsCrawlerWorker extends AbstractVerticle {
      *
      * @return HttpClientOptions object to configure this verticles HttpClient
      */
-    private HttpClientOptions getHttpClientOptions() {
-        return new HttpClientOptions()
+    private WebClientOptions getWebClientOptions() {
+        return new WebClientOptions()
                 .setPipelining(true)
                 .setPipeliningLimit(10)
                 .setIdleTimeout(0)
@@ -129,9 +100,18 @@ public class NewsCrawlerWorker extends AbstractVerticle {
                 .setKeepAlive(true);
     }
 
+    private HttpRequest<JsonObject> getHttpRequest() {
+        return webClient.get(port, baseUrl, urlPath)
+                .putHeader("Ocp-Apim-Subscription-Key", apiKey)
+                .addQueryParam("mkt", "en-US")
+                .addQueryParam("freshness", freshness)
+                .addQueryParam("count", String.valueOf(resultCount))
+                .as(BodyCodec.jsonObject());
+    }
+
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
+        webClient.close();
         messageConsumer.rxUnregister().subscribe(stopFuture::complete, stopFuture::fail);
     }
 }
