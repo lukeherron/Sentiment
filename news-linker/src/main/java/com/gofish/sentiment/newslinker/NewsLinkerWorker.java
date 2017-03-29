@@ -1,19 +1,19 @@
 package com.gofish.sentiment.newslinker;
 
 import io.vertx.core.Future;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.rxjava.core.AbstractVerticle;
 import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
-import io.vertx.rxjava.core.http.HttpClient;
-import io.vertx.rxjava.core.http.HttpClientRequest;
+import io.vertx.rxjava.ext.web.client.HttpRequest;
+import io.vertx.rxjava.ext.web.client.HttpResponse;
+import io.vertx.rxjava.ext.web.client.WebClient;
+import io.vertx.rxjava.ext.web.codec.BodyCodec;
+import rx.Observable;
 import rx.Single;
 
 import java.util.Optional;
@@ -26,7 +26,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
     static final String ADDRESS = "sentiment.linker.worker";
     private static final Logger LOG = LoggerFactory.getLogger(NewsLinkerWorker.class);
 
-    private HttpClient httpClient;
+    private WebClient webClient;
     private MessageConsumer<JsonObject> messageConsumer;
 
     private String apiKey;
@@ -38,9 +38,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         // Vertx requires a default constructor
     }
 
-    public NewsLinkerWorker(HttpClient httpClient) {
-        this.httpClient = httpClient;
-    }
+    public NewsLinkerWorker(WebClient webClient) { this.webClient = webClient; }
 
     @Override
     public void start() throws Exception {
@@ -53,58 +51,30 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         baseUrl = apiConfig.getString("base.url", "");
         urlPath = apiConfig.getString("url.path", "");
         port = apiConfig.getInteger("port", 443);
-        httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
+        webClient = Optional.ofNullable(webClient).orElseGet(() -> WebClient.create(vertx, getWebClientOptions()));
+
+        final HttpRequest<JsonObject> request = getHttpRequest();
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
-            try {
-                final JsonObject article = messageHandler.body().getJsonObject("article", new JsonObject());
-                final String articleName = article.getString("name");
-                final String articleDescription = article.getString("description");
+            JsonObject article = messageHandler.body().getJsonObject("article", new JsonObject());
+            final String articleName = article.getString("name");
+            final String articleDescription = article.getString("description");
 
-                if (articleName == null && articleDescription == null) {
-                    messageHandler.fail(1, "Invalid Request");
-                }
-                else if (articleName == null) {
-                    messageHandler.fail(1, "Invalid article headline supplied");
-                }
-                else if (articleDescription == null) {
-                    messageHandler.fail(1, "Invalid article lead paragraph supplied");
-                }
-
-                final String text = String.join(". ", articleName, articleDescription);
-                final Buffer chunk = Buffer.buffer(text);
-
-                HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
-                        .putHeader("Content-Type", "text/plain; charset=UTF-8")
-                        .putHeader("Content-Length", String.valueOf(chunk.length()))
-                        .putHeader("Ocp-Apim-Subscription-Key", apiKey);
-
-                LOG.info("Calling Entity Linking API");
-
-                request.toObservable()
-                        .flatMap(response -> {
-                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                            response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
-                            return observable;
-                        })
-                        .flatMapSingle(result -> rxAddNewEntities(article, result))
-                        .subscribe(
-                                result -> messageHandler.reply(result),
-                                failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> {
-                                    // request.end() must occur inside onComplete to avoid 'Request already complete'
-                                    // exceptions which may occure if initial request fails and a retry is necessary
-                                    request.end();
-                                    LOG.info("Finished News Linking");
-                                }
-                        );
-
-                request.write(chunk);
+            if (articleName == null && articleDescription == null) {
+                messageHandler.fail(1, "Invalid Request");
             }
-            catch (Throwable t) {
-                LOG.error(t.getMessage(), t.getCause());
-                messageHandler.fail(2, "Invalid Request");
+            else if (articleName == null) {
+                messageHandler.fail(1, "Invalid article headline supplied");
             }
+            else if (articleDescription == null) {
+                messageHandler.fail(1, "Invalid article lead paragraph supplied");
+            }
+
+            final String text = String.join(". ", articleName, articleDescription);
+            request.rxSendStream(Observable.just(Buffer.buffer(text)))
+                    .map(HttpResponse::body)
+                    .flatMap(body -> rxAddNewEntities(article, body))
+                    .subscribe(messageHandler::reply, fail -> messageHandler.fail(1, fail.getMessage()));
         });
     }
 
@@ -128,14 +98,21 @@ public class NewsLinkerWorker  extends AbstractVerticle {
         return Single.just(article);
     }
 
+    private HttpRequest<JsonObject> getHttpRequest() {
+        return webClient.post(port, baseUrl, urlPath)
+                .putHeader("Content-Type", "text/plain; charset=UTF-8")
+                .putHeader("Ocp-Apim-Subscription-Key", apiKey)
+                .as(BodyCodec.jsonObject());
+    }
+
     /**
      * Creates and returns an HttpClientOptions object. Values for each option are retrieved from the config json object
      * (this config json object is passed in to the verticle when it is deployed)
      *
      * @return HttpClientOptions object to configure this verticles HttpClient
      */
-    private HttpClientOptions getHttpClientOptions() {
-        return new HttpClientOptions()
+    private WebClientOptions getWebClientOptions() {
+        return new WebClientOptions()
                 .setPipelining(true)
                 .setPipeliningLimit(10)
                 .setIdleTimeout(0)
@@ -145,7 +122,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
+        webClient.close();
         messageConsumer.rxUnregister().subscribe(stopFuture::complete, stopFuture::fail);
     }
 }
