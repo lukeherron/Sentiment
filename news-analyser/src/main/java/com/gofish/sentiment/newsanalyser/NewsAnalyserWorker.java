@@ -1,19 +1,17 @@
 package com.gofish.sentiment.newsanalyser;
 
 import io.vertx.core.Future;
-import io.vertx.core.http.HttpClientOptions;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.rx.java.ObservableFuture;
-import io.vertx.rx.java.RxHelper;
+import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.rxjava.core.AbstractVerticle;
-import io.vertx.rxjava.core.buffer.Buffer;
 import io.vertx.rxjava.core.eventbus.MessageConsumer;
-import io.vertx.rxjava.core.http.HttpClient;
-import io.vertx.rxjava.core.http.HttpClientRequest;
+import io.vertx.rxjava.ext.web.client.HttpRequest;
+import io.vertx.rxjava.ext.web.client.HttpResponse;
+import io.vertx.rxjava.ext.web.client.WebClient;
+import io.vertx.rxjava.ext.web.codec.BodyCodec;
 import rx.Single;
 
 import java.util.Optional;
@@ -27,7 +25,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
     public static final String ADDRESS = "sentiment.analyser.worker";
     private static final Logger LOG = LoggerFactory.getLogger(NewsAnalyserWorker.class);
 
-    private HttpClient httpClient;
+    private WebClient webClient;
     private MessageConsumer<JsonObject> messageConsumer;
 
     private String apiKey;
@@ -39,8 +37,8 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         // Vertx requires a default constructor
     }
 
-    public NewsAnalyserWorker(HttpClient httpClient) {
-        this.httpClient = httpClient;
+    public NewsAnalyserWorker(WebClient webClient) {
+        this.webClient = webClient;
     }
 
     @Override
@@ -54,51 +52,36 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         baseUrl = apiConfig.getString("base.url", "");
         urlPath = apiConfig.getString("url.path", "");
         port = apiConfig.getInteger("port", 443);
-        httpClient = Optional.ofNullable(httpClient).orElseGet(() -> vertx.createHttpClient(getHttpClientOptions()));
+        webClient = Optional.ofNullable(webClient).orElseGet(() -> WebClient.create(vertx, getWebClientOptions()));
+
+        final HttpRequest<JsonObject> request = getHttpRequest();
 
         messageConsumer = vertx.eventBus().localConsumer(ADDRESS, messageHandler -> {
-            try {
-                final JsonObject article = messageHandler.body().getJsonObject("article");
-                final String analysisText = String.join(". ", article.getString("name"), article.getString("description"));
-                final JsonObject requestData = new JsonObject().put("documents", new JsonArray()
-                        .add(new JsonObject()
-                                .put("language", "en")
-                                .put("id", UUID.randomUUID().toString())
-                                .put("text", analysisText)));
+            final JsonObject article = messageHandler.body().getJsonObject("article");
+            final String articleName = article.getString("name");
+            final String articleDescription = article.getString("description");
 
-                final Buffer chunk = Buffer.buffer(requestData.encode());
-
-                HttpClientRequest request = httpClient.request(HttpMethod.POST, port, baseUrl, urlPath)
-                        .putHeader("Content-Type", "application/json; charset=UTF-8")
-                        .putHeader("Content-Length", String.valueOf(chunk.length()))
-                        .putHeader("Ocp-Apim-Subscription-Key", apiKey);
-
-                LOG.info("Calling Text Analytics API");
-
-                request.toObservable()
-                        .flatMap(response -> {
-                            ObservableFuture<JsonObject> observable = RxHelper.observableFuture();
-                            response.bodyHandler(buffer -> observable.toHandler().handle(Future.succeededFuture(buffer.toJsonObject())));
-                            return observable;
-                        })
-                        .flatMapSingle(result -> rxAddSentimentResults(article, result))
-                        .subscribe(
-                                result -> messageHandler.reply(result),
-                                failure -> messageHandler.fail(1, failure.getMessage()),
-                                () -> {
-                                    // request.end() must occur inside onComplete to avoid 'Request already complete'
-                                    // exceptions which may occure if initial request fails and a retry is necessary
-                                    request.end();
-                                    LOG.info("Finished News Analysis");
-                                }
-                        );
-
-                request.write(chunk);
+            if (articleName == null && articleDescription == null) {
+                messageHandler.fail(1, "Invalid Request");
             }
-            catch (Throwable t) {
-                LOG.error(t.getMessage(), t.getCause());
-                messageHandler.fail(2, "Invalid Request");
+            else if (articleName == null) {
+                messageHandler.fail(1, "Invalid article headline supplied");
             }
+            else if (articleDescription == null) {
+                messageHandler.fail(1, "Invalid article lead paragraph supplied");
+            }
+
+            final String analysisText = String.join(". ", articleName, articleDescription);
+            final JsonObject requestData = new JsonObject().put("documents", new JsonArray()
+                    .add(new JsonObject()
+                            .put("language", "en")
+                            .put("id", UUID.randomUUID().toString())
+                            .put("text", analysisText)));
+
+            request.rxSendJson(requestData)
+                    .map(HttpResponse::body)
+                    .flatMap(body -> rxAddSentimentResults(article, body))
+                    .subscribe(messageHandler::reply, fail -> messageHandler.fail(1, fail.getMessage()));
         });
     }
 
@@ -111,14 +94,20 @@ public class NewsAnalyserWorker extends AbstractVerticle {
         return Single.just(article);
     }
 
+    private HttpRequest<JsonObject> getHttpRequest() {
+        return webClient.post(port, baseUrl, urlPath)
+                .putHeader("Ocp-Apim-Subscription-Key", apiKey)
+                .as(BodyCodec.jsonObject());
+    }
+
     /**
      * Creates and returns an HttpClientOptions object. Values for each option are retrieved from the config json object
      * (this config json object is passed in to the verticle when it is deployed)
      *
      * @return HttpClientOptions object to configure this verticles HttpClient
      */
-    private HttpClientOptions getHttpClientOptions() {
-        return new HttpClientOptions()
+    private WebClientOptions getWebClientOptions() {
+        return new WebClientOptions()
                 .setPipelining(true)
                 .setPipeliningLimit(10)
                 .setIdleTimeout(0)
@@ -128,7 +117,7 @@ public class NewsAnalyserWorker extends AbstractVerticle {
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        httpClient.close();
+        webClient.close();
         messageConsumer.rxUnregister().subscribe(stopFuture::complete, stopFuture::fail);
     }
 }
