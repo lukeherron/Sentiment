@@ -116,7 +116,7 @@ public class NewsLinkerWorker  extends AbstractVerticle {
                 .setPipelining(true)
                 .setPipeliningLimit(10)
                 .setIdleTimeout(0)
-                .setSsl(true)
+                .setSsl(!baseUrl.equalsIgnoreCase("localhost"))
                 .setKeepAlive(true);
     }
 
