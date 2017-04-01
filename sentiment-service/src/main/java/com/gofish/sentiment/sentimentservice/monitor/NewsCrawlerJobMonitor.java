@@ -82,7 +82,8 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
 
         LOG.info("Starting news search for job: " + job.getJobId());
         rxGetNewsCrawlerService()
-                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.crawlQuery(query, handler)))
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
+                        service.crawlQuery(query, handler)))
                         .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .doOnSuccess(job::setResult)
                 .flatMapObservable(result -> rxFilterExistingArticles(query, result))
@@ -105,7 +106,8 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
                 .map(article -> (JsonObject) article)
                 .map(SentimentArticle::new)
                 .flatMap(article -> rxGetStorageService()
-                        .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<Boolean>(handler -> service.hasArticle(query, article.getName(), article.getDescription(), handler)))
+                        .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<Boolean>(handler ->
+                                service.hasArticle(query, article.getName(), article.getDescription(), handler)))
                                 .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                         .toObservable()
                         .filter(hasArticle -> !hasArticle)
@@ -216,8 +218,9 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         String query = job.getPayload().getString("query");
         rxGetStorageService()
                 .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
-                        service.saveArticles(query, job.getResult().getJsonArray("value"), handler))))
-                .doOnEach(LOG::info)
+                        service.saveArticles(query, result.getJsonArray("value"), handler)))
+                        .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
+                .doOnSuccess(LOG::info)
                 .flatMap(saveResult -> actionClient.rxLrem(workingQueue.toString(), 0, job.encode()))
                 .subscribe(removeResult -> {
                     job.setResult(result);

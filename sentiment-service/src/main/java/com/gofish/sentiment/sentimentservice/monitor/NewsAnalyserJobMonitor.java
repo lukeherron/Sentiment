@@ -75,7 +75,8 @@ public class NewsAnalyserJobMonitor extends AbstractVerticle {
         serviceDiscovery.rxGetRecord(record -> record.getName().equals(NewsAnalyserService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<NewsAnalyserService>get)
-                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.analyseSentiment(article, handler)))
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
+                        service.analyseSentiment(article, handler)))
                         .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)))
                 .map(article::mergeIn)
                 .subscribe(

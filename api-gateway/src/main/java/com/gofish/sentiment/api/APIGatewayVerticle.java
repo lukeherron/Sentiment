@@ -76,8 +76,9 @@ public class APIGatewayVerticle extends AbstractVerticle {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(SentimentService.NAME))
                 .map(serviceDiscovery::getReference)
                 .map(ServiceReference::<SentimentService>get)
-                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler -> service.getSentiment(query, handler)))
-                    .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)));
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<JsonObject>(handler ->
+                        service.getSentiment(query, handler)))
+                        .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service)));
     }
 
     @Override
