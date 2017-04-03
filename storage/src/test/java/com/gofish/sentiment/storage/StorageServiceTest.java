@@ -1,47 +1,69 @@
 package com.gofish.sentiment.storage;
 
-import io.vertx.core.*;
-import io.vertx.core.eventbus.DeliveryOptions;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.impl.VertxImpl;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.mongo.IndexOptions;
+import io.vertx.ext.mongo.MongoClient;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import java.net.URL;
 
 /**
  * @author Luke Herron
- *
- * The tests represented here are largely undertaken for learning. Practically all of the methods implemented in the
- * StorageService interface implementation call 'vertx.deployVerticle()' and 'vertx.eventBus()' both of which have been
- * mocked (and yes, both of which we don't own...). The integration tests for this module remain unmocked and stands as
- * the practical test for the StorageService interface and implementation class.
  */
 @RunWith(VertxUnitRunner.class)
 public class StorageServiceTest {
 
-    @Rule
-    public final RunTestOnContext vertxRule = new RunTestOnContext();
+    @ClassRule
+    public static final RunTestOnContext vertxRule = new RunTestOnContext();
 
     private Vertx vertx;
     private StorageService storageService;
 
+    @BeforeClass
+    public static void setUpDB(TestContext context) {
+        // Prepare the DB with preset data. Start by removing all previously saved data
+        final Vertx vertx = vertxRule.vertx();
+        final MongoClient mongo = MongoClient.createShared(vertx, new JsonObject());
+        final JsonObject command = new JsonObject().put("dropDatabase", 1);
+
+        mongo.runCommand("dropDatabase", command, context.asyncAssertSuccess());
+
+        // Then fill it with some demo data
+        URL articlesURL = StorageServiceTest.class.getClassLoader().getResource("data/StorageArticles.json");
+        assert  articlesURL != null;
+
+        final String collectionName = "existingCollection";
+        final String indexName = "existingCollectionIndex";
+        final JsonArray articles = vertx.fileSystem().readFileBlocking(articlesURL.getFile()).toJsonArray();
+
+        final JsonObject collectionIndex = new JsonObject()
+                .put("name", 1)
+                .put("description", 1);
+
+        final JsonObject insertCommand = new JsonObject()
+                .put("insert", collectionName)
+                .put("documents", articles)
+                .put("ordered", false);
+
+        mongo.createCollection(collectionName, context.asyncAssertSuccess());
+        mongo.createIndexWithOptions(collectionName, collectionIndex, new IndexOptions().name(indexName).unique(true), context.asyncAssertSuccess());
+        mongo.runCommand("insert", insertCommand, context.asyncAssertSuccess());
+        mongo.close();
+    }
+
     @Before
     public void setUp() {
-        vertx = mock(VertxImpl.class);
+        vertx = vertxRule.vertx();
         storageService = StorageService.create(vertx, new JsonObject());
-
-        when(vertx.eventBus()).thenReturn(mock(EventBus.class));
     }
 
     @Test
@@ -52,165 +74,85 @@ public class StorageServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void testCreateCollectionSucceeds(TestContext context) {
-        prepareSuccessScenario(mock(Message.class));
-
         storageService.createCollection("testCollection", context.asyncAssertSuccess());
     }
 
     @Test
-    public void testCreateCollectionFails(TestContext context) {
-        prepareFailureScenario();
-
-        storageService.createCollection("testCollection", context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
+    public void testCreateCollectionFailsIfCollectionAlreadyExists(TestContext context) {
+        storageService.createCollection("existingCollection", context.asyncAssertFailure(result ->
+                context.assertEquals("Collection already exists", result.getMessage())));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void testCreateIndexSucceeds(TestContext context) {
-        prepareSuccessScenario(mock(Message.class));
-
-        storageService.createIndex("testCollection", new JsonObject(), context.asyncAssertSuccess());
+        JsonObject index = new JsonObject().put("test", 1);
+        storageService.createCollection("testIndexCollection", context.asyncAssertSuccess());
+        storageService.createIndex("testIndexCollection", index, context.asyncAssertSuccess());
     }
 
     @Test
-    public void testCreateIndexFails(TestContext context) {
-        prepareFailureScenario();
-
+    public void testCreateIndexFailsIfIndexKeyEmpty(TestContext context) {
         storageService.createIndex("testCollection", new JsonObject(), context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
+                context.assertTrue(result.getMessage().contains("Index keys cannot be empty"))));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void testGetCollectionsSucceeds(TestContext context) {
-        Message<Object> message = mock(Message.class);
-        prepareSuccessScenario(message);
-
-        when(message.body()).thenReturn(new JsonArray().add(new JsonObject().put("result", "success")));
-
-        storageService.getCollections(context.asyncAssertSuccess(result ->
-                context.assertEquals("success", result.getJsonObject(0).getString("result"))));
+        storageService.getCollections(context.asyncAssertSuccess(result -> context.assertFalse(result.isEmpty())));
     }
 
     @Test
-    public void testGetCollectionFails(TestContext context) {
-        prepareFailureScenario();
-
-        storageService.getCollections(context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
+    public void testGetSentimentResultsSucceedsForValidCollection(TestContext context) {
+        storageService.getSentimentResults("existingCollection", context.asyncAssertSuccess(result ->
+                context.assertEquals("{\"score\":0.38630980000000004}", result.encode())));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void testGetSentimentResultsSucceeds(TestContext context) {
-        Message<Object> message = mock(Message.class);
-        prepareSuccessScenario(message);
-
-        when(message.body()).thenReturn(new JsonObject().put("result", "success"));
-
-        storageService.getSentimentResults("testCollection", context.asyncAssertSuccess(result ->
-                context.assertEquals("success", result.getString("result"))));
+    public void testGetSentimentResultsFailsForInvalidCollection(TestContext context) {
+        storageService.getSentimentResults("invalidCollection", context.asyncAssertSuccess(result ->
+                context.assertTrue(result.isEmpty())));
     }
 
     @Test
-    public void testGetSentimentResultsFails(TestContext context) {
-        prepareFailureScenario();
-
-        storageService.getSentimentResults("testCollection", context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
+    public void testHasCollectionReturnsTrueIfCollectionExists(TestContext context) {
+        storageService.hasCollection("existingCollection", context.asyncAssertSuccess(context::assertTrue));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void testHasCollectionSucceeds(TestContext context) {
-        Message<Object> message = mock(Message.class);
-        prepareSuccessScenario(message);
-
-        when(message.body()).thenReturn(true);
-
-        storageService.hasCollection("testCollection", context.asyncAssertSuccess(context::assertTrue));
+    public void testHasCollectionReturnsFalseIfCollectionDoesNotExist(TestContext context) {
+        storageService.hasCollection("missingCollection", context.asyncAssertSuccess(context::assertFalse));
     }
 
     @Test
-    public void testHasCollectionFails(TestContext context) {
-        prepareFailureScenario();
-
-        storageService.hasCollection("testCollection", context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
     public void testSaveArticlesSucceeds(TestContext context) {
-        Message<Object> message = mock(Message.class);
-        prepareSuccessScenario(message);
+        URL articlesURL = StorageServiceTest.class.getClassLoader().getResource("data/StorageArticleSingle.json");
+        assert  articlesURL != null;
 
-        when(message.body()).thenReturn(new JsonObject().put("result", "success"));
+        final JsonArray article = vertx.fileSystem().readFileBlocking(articlesURL.getFile()).toJsonArray();
 
-        storageService.saveArticles("testCollection", new JsonArray(), context.asyncAssertSuccess(result ->
-                context.assertEquals("success", result.getString("result"))));
+        storageService.saveArticles("existingCollection", article, context.asyncAssertSuccess(result ->
+                context.assertEquals("{\"ok\":1,\"n\":1}", result.encode())));
     }
 
     @Test
-    public void testSaveArticlesFails(TestContext context) {
-        prepareFailureScenario();
+    public void testSaveArticlesHasWriteErrorsWhenSavingDuplicates(TestContext context) {
+        URL articlesURL = StorageServiceTest.class.getClassLoader().getResource("data/StorageArticles.json");
+        assert  articlesURL != null;
 
-        storageService.saveArticles("testCollection", new JsonArray(), context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
+        final JsonArray articles = vertx.fileSystem().readFileBlocking(articlesURL.getFile()).toJsonArray();
+
+        storageService.saveArticles("existingCollection", articles, context.asyncAssertSuccess(result ->
+                context.assertTrue(result.containsKey("writeErrors"))));
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void testIsIndexPresentSucceeds(TestContext context) {
-        Message<Object> message = mock(Message.class);
-        prepareSuccessScenario(message);
-
-        when(message.body()).thenReturn(true);
-
-        storageService.isIndexPresent("testCollectionIndex", "testCollection", context.asyncAssertSuccess(context::assertTrue));
+    public void testIsIndexPresentReturnsTrueWhenCollectionExists(TestContext context) {
+        storageService.isIndexPresent("existingCollectionIndex", "existingCollection", context.asyncAssertSuccess(context::assertTrue));
     }
 
     @Test
-    public void testIsIndexPresentFails(TestContext context) {
-        prepareFailureScenario();
-
-        storageService.isIndexPresent("testCollectionIndex", "testCollection", context.asyncAssertFailure(result ->
-                context.assertEquals("failed test", result.getMessage())));
-    }
-
-    private void prepareSuccessScenario(Message<Object> message) {
-        Future<Message<Object>> future = Future.succeededFuture(message);
-        setMessageResponse(future);
-        setDeployVerticleSucceeds();
-    }
-
-    private void prepareFailureScenario() {
-        Future<Message<Object>> future = Future.failedFuture("failed test");
-        setMessageResponse(future);
-        setDeployVerticleSucceeds();
-    }
-
-    private void setDeployVerticleSucceeds() {
-        Future<String> deployFuture = Future.succeededFuture("test.id");
-        setDeployVerticleResponse(deployFuture);
-    }
-
-    private void setDeployVerticleResponse(Future<String> future) {
-        doAnswer(invocation -> {
-            Handler<AsyncResult<String>> handler = invocation.getArgument(2);
-            handler.handle(future);
-            return null;
-        }).when(vertx).deployVerticle(anyString(), any(DeploymentOptions.class), any());
-    }
-
-    private void setMessageResponse(Future<Message<Object>> future) {
-        when(vertx.eventBus().send(anyString(), any(JsonObject.class), any(DeliveryOptions.class), any())).thenAnswer(invocation -> {
-            Handler<AsyncResult<Message<Object>>> handler = invocation.getArgument(3);
-            handler.handle(future);
-            return null;
-        });
+    public void testIsIndexPresentReturnsFalseWhenCollectionDoesNotExist(TestContext context) {
+        storageService.isIndexPresent("missingCollectionIndex", "missingCollection", context.asyncAssertSuccess(context::assertFalse));
     }
 }
