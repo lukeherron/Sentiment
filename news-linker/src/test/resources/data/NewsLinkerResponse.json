@@ -1,85 +1,25 @@
 {
-  "entities": [
+  "name": "Appleâ€™s hot new W1-equipped BeatsX wireless earbuds have finally been released.",
+  "description": "Last night, there were only three pairs of headphones on the planet equipped with Appleâ€™s W1 wireless chip. The most talked-about W1 headphones are obviously Appleâ€™s truly wireless earbuds, the AirPods, which are still next to impossible to find unless ...",
+  "about": [
     {
-      "matches": [
-        {
-          "text": "Apple",
-          "entries": [
-            {
-              "offset": 0
-            },
-            {
-              "offset": 149
-            }
-          ]
-        }
-      ],
-      "name": "Apple Inc.",
-      "wikipediaId": "Apple Inc.",
-      "score": 1.0
+      "name": "Apple Inc."
     },
     {
-      "matches": [
-        {
-          "text": "iPad",
-          "entries": [
-            {
-              "offset": 41
-            },
-            {
-              "offset": 47
-            }
-          ]
-        }
-      ],
       "name": "iPad",
-      "wikipediaId": "IPad",
-      "score": 0.714
+      "readLink": ""
     },
     {
-      "matches": [
-        {
-          "text": "CEO",
-          "entries": [
-            {
-              "offset": 92
-            }
-          ]
-        }
-      ],
       "name": "Chief Executive Officer",
-      "wikipediaId": "Chief executive officer",
-      "score": 0.989
+      "readLink": ""
     },
     {
-      "matches": [
-        {
-          "text": "Tim Cook",
-          "entries": [
-            {
-              "offset": 96
-            }
-          ]
-        }
-      ],
       "name": "Tim Cook",
-      "wikipediaId": "Tim Cook",
-      "score": 1.0
+      "readLink": ""
     },
     {
-      "matches": [
-        {
-          "text": "iPhone",
-          "entries": [
-            {
-              "offset": 271
-            }
-          ]
-        }
-      ],
       "name": "iPhone",
-      "wikipediaId": "IPhone",
-      "score": 0.486
+      "readLink": ""
     }
   ]
 }
