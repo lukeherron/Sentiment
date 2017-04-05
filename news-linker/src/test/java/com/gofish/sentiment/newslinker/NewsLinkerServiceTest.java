@@ -1,21 +1,19 @@
 package com.gofish.sentiment.newslinker;
 
-import io.vertx.core.*;
-import io.vertx.core.eventbus.EventBus;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.impl.VertxImpl;
+import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.Router;
 import org.junit.Before;
-import org.junit.Rule;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+import java.net.URL;
 
 /**
  * @author Luke Herron
@@ -23,71 +21,89 @@ import static org.mockito.Mockito.*;
 @RunWith(VertxUnitRunner.class)
 public class NewsLinkerServiceTest {
 
-    @Rule
-    public final RunTestOnContext vertxRule = new RunTestOnContext();
+    @ClassRule
+    public static final RunTestOnContext vertxRule = new RunTestOnContext();
 
     private Vertx vertx;
     private NewsLinkerService newsLinkerService;
+    private JsonObject entityLinkingResponse;
 
     @Before
     public void setUp() {
-        vertx = mock(VertxImpl.class);
-        newsLinkerService = NewsLinkerService.create(vertx, new JsonObject());
+        vertx = vertxRule.vertx();
 
-        when(vertx.eventBus()).thenReturn(mock(EventBus.class));
-    }
+        Router router = Router.router(vertx);
+        router.route("/entitylinking/v1.0/link").handler(routingContext -> {
+            routingContext.request().bodyHandler(body -> {
+                String request = body.toString().trim();
+                HttpServerResponse response = routingContext.response();
+                URL responseURL;
 
-    @Test
-    public void testNewsLinkerServiceProxyIsCreated(TestContext context) {
-        NewsLinkerService newsLinkerService = NewsLinkerService.createProxy(vertx, NewsLinkerService.ADDRESS);
+                switch (request) {
+                    case "error429.":
+                        response.setStatusCode(429);
+                        responseURL = getClass().getClassLoader().getResource("data/NewsLinker429Error.json");
+                        break;
+                    default:
+                        response.setStatusCode(200);
+                        responseURL = getClass().getClassLoader().getResource("data/EntityLinkerResponse.json");
+                }
 
-        context.assertNotNull(newsLinkerService);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testLinkEntitiesSucceeds(TestContext context) {
-        Future<String> deployFuture = Future.succeededFuture("test.id");
-
-        doAnswer(invocation -> {
-            Handler<AsyncResult<String>> handler = invocation.getArgument(2);
-            handler.handle(deployFuture);
-            return invocation.getMock();
-        }).when(vertx).deployVerticle(anyString(), any(DeploymentOptions.class), any());
-
-        Message<Object> message = mock(Message.class);
-        Future<Message<Object>> future = Future.succeededFuture(message);
-
-        when(vertx.eventBus().send(anyString(), any(JsonObject.class), any(Handler.class))).thenAnswer(invocation -> {
-            Handler<AsyncResult<Message<Object>>> handler = invocation.getArgument(2);
-            handler.handle(future);
-            return invocation.getMock();
+                assert responseURL != null;
+                entityLinkingResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+                response.end(entityLinkingResponse.encode());
+            });
         });
 
-        newsLinkerService.linkEntities(new JsonObject().put("name", "test article"), context.asyncAssertSuccess());
+        vertx.createHttpServer().requestHandler(router::accept).listen();
+
+        JsonObject config = new JsonObject().put("api", new JsonObject()
+                .put("base.url", "localhost")
+                .put("url.path", "/entitylinking/v1.0/link")
+                .put("port", 80)
+                .put("worker.instances", 8));
+
+        newsLinkerService = NewsLinkerService.create(vertx, config);
     }
 
     @Test
-    @SuppressWarnings("unchecked")
-    public void testLinkEntitiesFails(TestContext context) {
-        Future<String> deployFuture = Future.succeededFuture("test.id");
+    public void testNewsLinkerReturnsExpectedJsonResultOnSuccess(TestContext context) {
+        final JsonObject article = new JsonObject()
+                .put("name", "Apple’s hot new W1-equipped BeatsX wireless earbuds have finally been released.")
+                .put("description", "Last night, there were only three pairs of headphones on the planet equipped with Apple’s W1 wireless chip. The most talked-about W1 headphones are obviously Apple’s truly wireless earbuds, the AirPods, which are still next to impossible to find unless ...")
+                .put("about", new JsonArray().add(new JsonObject().put("name", "Apple Inc.")));
 
-        doAnswer(invocation -> {
-            Handler<AsyncResult<String>> handler = invocation.getArgument(2);
-            handler.handle(deployFuture);
-            return invocation.getMock();
-        }).when(vertx).deployVerticle(anyString(), any(DeploymentOptions.class), any());
+        newsLinkerService.linkEntities(article, context.asyncAssertSuccess(result -> {
+            URL responseURL = getClass().getClassLoader().getResource("data/NewsLinkerResponse.json");;
+            assert responseURL != null;
+            JsonObject newsLinkingResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
 
-        Future<Message<Object>> future = Future.failedFuture("failed test");
+            context.assertEquals(newsLinkingResponse.encodePrettily(), result.encodePrettily());
+        }));
+    }
 
-        when(vertx.eventBus().send(anyString(), any(JsonObject.class), any(Handler.class))).thenAnswer(invocation -> {
-            Handler<AsyncResult<Message<Object>>> handler = invocation.getArgument(2);
-            handler.handle(future);
-            return invocation.getMock();
-        });
+    @Test
+    public void testNewsLinkerReturnsExpectedJsonResultOnFailure(TestContext context) {
+        final JsonObject article = new JsonObject()
+                .put("name", "error429")
+                .put("description", "")
+                .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test")));
 
-        newsLinkerService.linkEntities(new JsonObject().put("name", "test article"), context.asyncAssertFailure(result -> {
-            context.assertEquals("failed test", result.getMessage());
+        newsLinkerService.linkEntities(article, context.asyncAssertFailure(cause -> {
+            URL responseURL = getClass().getClassLoader().getResource("data/NewsLinker429Error.json");
+            assert responseURL != null;
+            JsonObject errorResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+
+            context.assertEquals(errorResponse.encode(), cause.getMessage());
+        }));
+    }
+
+    @Test
+    public void testNewsLinkerFailsIfInvalidArticleSupplied(TestContext context) {
+        final JsonObject invalidArticle = new JsonObject().put("invalid", "");
+
+        newsLinkerService.linkEntities(invalidArticle, context.asyncAssertFailure(cause -> {
+            context.assertEquals("Invalid Request", cause.getMessage());
         }));
     }
 }
