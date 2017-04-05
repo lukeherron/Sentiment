@@ -51,22 +51,7 @@ public class NewsLinkerVerticleTest {
     }
 
     @Test
-    public void testStorageServicePublishedStatus(TestContext context) {
-        final AtomicReference<String> serviceDiscoveryStatus = new AtomicReference<>();
-
-        vertx.eventBus().<JsonObject>consumer("vertx.discovery.announce", messageHandler -> {
-            final JsonObject announce = messageHandler.body();
-            serviceDiscoveryStatus.set(announce.getString("status"));
-        });
-
-        vertx.deployVerticle(NewsLinkerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(result -> {
-            context.assertEquals(serviceDiscoveryStatus.get(), "UP", "Service Discovery Status returned '" +
-                    serviceDiscoveryStatus + "'. Expected 'UP'");
-        }));
-    }
-
-    @Test
-    public void testStorageServiceStatus(TestContext context) {
+    public void testNewsLinkerServicePublishedStatus(TestContext context) {
         final AtomicReference<String> serviceDiscoveryStatus = new AtomicReference<>();
 
         vertx.eventBus().<JsonObject>consumer("vertx.discovery.announce", messageHandler -> {
