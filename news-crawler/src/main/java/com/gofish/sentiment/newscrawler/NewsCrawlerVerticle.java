@@ -33,7 +33,6 @@ public class NewsCrawlerVerticle extends AbstractVerticle {
 
         NewsCrawlerService newsCrawlerService = NewsCrawlerService.create(vertx, config);
         messageConsumer = ProxyHelper.registerService(NewsCrawlerService.class, vertx, newsCrawlerService, NewsCrawlerService.ADDRESS);
-
         serviceDiscovery = ServiceDiscovery.create(vertx);
         record = EventBusService.createRecord(NewsCrawlerService.NAME, NewsCrawlerService.ADDRESS, NewsCrawlerService.class);
 
