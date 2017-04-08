@@ -1,10 +1,6 @@
 package com.gofish.sentiment.newscrawler;
 
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.ReplyException;
-import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
@@ -23,24 +19,25 @@ import java.net.URL;
  * @author Luke Herron
  */
 @RunWith(VertxUnitRunner.class)
-public class NewsCrawlerWorkerTest {
+public class NewsCrawlerServiceTest {
 
     @Rule
     public final RunTestOnContext vertxRule = new RunTestOnContext();
 
     private Vertx vertx;
+    private NewsCrawlerService newsCrawlerService;
+    private JsonObject newsSearchResponse;
 
     @Before
-    public void setUp(TestContext context) {
+    public void setUp() {
         vertx = vertxRule.vertx();
 
         Router router = Router.router(vertx);
         router.route().handler(LoggerHandler.create());
-
         router.route("/bing/v5.0/news/search").handler(routingContext -> {
             String q = routingContext.request().params().get("q");
             HttpServerResponse response = routingContext.response();
-            URL responseURL = null;
+            URL responseURL;
 
             switch (q) {
                 case "error429":
@@ -53,8 +50,8 @@ public class NewsCrawlerWorkerTest {
             }
 
             assert responseURL != null;
-            Buffer newsCrawlerResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile());
-            response.end(newsCrawlerResponse);
+            newsSearchResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+            response.end(newsSearchResponse.encode());
         });
 
         vertx.createHttpServer().requestHandler(router::accept).listen();
@@ -68,40 +65,33 @@ public class NewsCrawlerWorkerTest {
                 .put("worker.instances", 8)
         );
 
-        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config);
-        vertx.deployVerticle(NewsCrawlerWorker.class.getName(), deploymentOptions, context.asyncAssertSuccess());
+        newsCrawlerService = NewsCrawlerService.create(vertx, config);
     }
 
     @Test
     public void testNewsCrawlerReturnsExpectedJsonResultOnSuccess(TestContext context) {
-        final JsonObject message = new JsonObject().put("query", "test");
+        String query = "test";
 
-        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
-            context.assertNotNull(result.body());
-            JsonObject response = (JsonObject) result.body();
-            context.assertFalse(response.isEmpty());
+        newsCrawlerService.crawlQuery(query, context.asyncAssertSuccess(result -> {
+            context.assertFalse(result.isEmpty());
         }));
     }
 
     @Test
     public void testNewsCrawlerReturnsExpectedJsonResultOnTooManyAttempts(TestContext context) {
-        final JsonObject message = new JsonObject().put("query", "error429");
-        final JsonObject newsCrawlerError = new JsonObject().put("error", new JsonObject()
-                .put("statusCode", 429)
-                .put("message", "Too many requests. Please try again in 2 seconds"));
+        String query = "error429";
 
-        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
-            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
-            context.assertEquals(newsCrawlerError.encode(), cause.getMessage());
+        newsCrawlerService.crawlQuery(query, context.asyncAssertFailure(cause -> {
+            context.assertEquals(newsSearchResponse.encode(), cause.getMessage());
         }));
     }
 
     @Test
     public void testNewsCrawlerFailsIfInvalidQuerySupplied(TestContext context) {
-        final JsonObject invalidQueryMessage = new JsonObject().put("query", "");
+        String query = "";
 
-        vertx.eventBus().send(NewsCrawlerWorker.ADDRESS, invalidQueryMessage, context.asyncAssertFailure(result -> {
-            context.assertEquals("Invalid Query", result.getMessage());
+        newsCrawlerService.crawlQuery(query, context.asyncAssertFailure(cause -> {
+            context.assertEquals("Invalid Query", cause.getMessage());
         }));
     }
 }

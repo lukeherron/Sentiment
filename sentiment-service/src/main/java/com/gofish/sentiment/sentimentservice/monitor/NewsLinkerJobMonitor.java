@@ -1,8 +1,8 @@
 package com.gofish.sentiment.sentimentservice.monitor;
 
 import com.gofish.sentiment.newslinker.NewsLinkerService;
-import com.gofish.sentiment.sentimentservice.PendingQueue;
-import com.gofish.sentiment.sentimentservice.WorkingQueue;
+import com.gofish.sentiment.sentimentservice.queue.PendingQueue;
+import com.gofish.sentiment.sentimentservice.queue.WorkingQueue;
 import com.gofish.sentiment.sentimentservice.article.SentimentArticle;
 import com.gofish.sentiment.sentimentservice.job.Job;
 import com.gofish.sentiment.sentimentservice.job.LinkerJob;

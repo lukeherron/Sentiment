@@ -1,4 +1,4 @@
-package com.gofish.sentiment.newslinker;
+package com.gofish.sentiment.newscrawler;
 
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Luke Herron
  */
 @RunWith(VertxUnitRunner.class)
-public class NewsLinkerVerticleTest {
+public class NewsCrawlerVerticleTest {
 
     @Rule
     public final RunTestOnContext vertxRule = new RunTestOnContext();
@@ -31,27 +31,28 @@ public class NewsLinkerVerticleTest {
 
         JsonObject config = new JsonObject().put("api", new JsonObject()
                 .put("base.url", "localhost")
-                .put("url.path", "/entitylinking/v1.0/link")
+                .put("url.path", "/bing/v5.0/news/search")
                 .put("port", 80)
-                .put("worker.instances", 8));
+                .put("result.count", 100)
+                .put("freshness", "Day"));
 
         deploymentOptions = new DeploymentOptions().setConfig(config);
     }
 
     @Test
     public void testStartingVerticle(TestContext context) {
-        vertx.deployVerticle(NewsLinkerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(context::assertNotNull));
+        vertx.deployVerticle(NewsCrawlerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(context::assertNotNull));
     }
 
     @Test
     public void testStoppingVerticle(TestContext context) {
-        vertx.deployVerticle(NewsLinkerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(result -> {
+        vertx.deployVerticle(NewsCrawlerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(result -> {
             vertx.close(context.asyncAssertSuccess());
         }));
     }
 
     @Test
-    public void testNewsLinkerServicePublishedStatus(TestContext context) {
+    public void testNewsCrawlerServicePublishedStatus(TestContext context) {
         final AtomicReference<String> serviceDiscoveryStatus = new AtomicReference<>();
 
         vertx.eventBus().<JsonObject>consumer("vertx.discovery.announce", messageHandler -> {
@@ -59,7 +60,7 @@ public class NewsLinkerVerticleTest {
             serviceDiscoveryStatus.set(announce.getString("status"));
         });
 
-        vertx.deployVerticle(NewsLinkerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(result -> {
+        vertx.deployVerticle(NewsCrawlerVerticle.class.getName(), deploymentOptions, context.asyncAssertSuccess(result -> {
             context.assertEquals(serviceDiscoveryStatus.get(), "UP", "Service Discovery Status returned '" +
                     serviceDiscoveryStatus + "'. Expected 'UP'");
         }));

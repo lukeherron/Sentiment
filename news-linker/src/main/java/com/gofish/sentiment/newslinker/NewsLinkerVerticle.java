@@ -1,7 +1,6 @@
 package com.gofish.sentiment.newslinker;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonObject;
@@ -31,9 +30,6 @@ public class NewsLinkerVerticle extends AbstractVerticle {
 
         JsonObject config = Optional.ofNullable(config())
                 .orElseThrow(() -> new RuntimeException("Could not load linker verticle configuration"));
-
-        DeploymentOptions workerOptions = new DeploymentOptions().setConfig(config).setInstances(10).setWorker(true);
-        vertx.deployVerticle(NewsLinkerWorker.class.getName(), workerOptions);
 
         NewsLinkerService newsLinkerService = NewsLinkerService.create(vertx, config);
         messageConsumer = ProxyHelper.registerService(NewsLinkerService.class, vertx, newsLinkerService, NewsLinkerService.ADDRESS);

@@ -1,11 +1,8 @@
 package com.gofish.sentiment.newsanalyser;
 
-import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.ReplyException;
-import io.vertx.core.eventbus.ReplyFailure;
 import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
@@ -23,27 +20,27 @@ import java.net.URL;
  * @author Luke Herron
  */
 @RunWith(VertxUnitRunner.class)
-public class NewsAnalyserWorkerTest {
+public class NewsAnalyserServiceTest {
 
     @Rule
     public final RunTestOnContext vertxRule = new RunTestOnContext();
 
     private Vertx vertx;
+    private NewsAnalyserService newsAnalyserService;
+    private JsonObject sentimentAnalysisResponse;
 
     @Before
-    public void setUp(TestContext context) {
+    public void setUp() {
         vertx = vertxRule.vertx();
 
         Router router = Router.router(vertx);
         router.route().handler(LoggerHandler.create());
-
         router.route("/text/analytics/v2.0/sentiment").handler(routingContext -> {
             routingContext.request().bodyHandler(body -> {
                 JsonObject request = body.toJsonObject();
                 HttpServerResponse response = routingContext.response();
                 URL responseURL;
 
-                System.out.println(request.getJsonArray("documents").getJsonObject(0).getString("text"));
                 switch (request.getJsonArray("documents").getJsonObject(0).getString("text").trim()) {
                     case "error429.":
                         response.setStatusCode(429);
@@ -55,8 +52,8 @@ public class NewsAnalyserWorkerTest {
                 }
 
                 assert responseURL != null;
-                Buffer newsAnalyserResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile());
-                response.end(newsAnalyserResponse);
+                sentimentAnalysisResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
+                response.end(sentimentAnalysisResponse.encode());
             });
         });
 
@@ -68,34 +65,38 @@ public class NewsAnalyserWorkerTest {
                         .put("port", 80)
                         .put("worker.instances", 8));
 
-        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config);
-        vertx.deployVerticle(NewsAnalyserWorker.class.getName(), deploymentOptions, context.asyncAssertSuccess());
+        newsAnalyserService = NewsAnalyserService.create(vertx, config);
     }
 
     @Test
     public void testNewsAnalyserReturnsExpectedJsonResultOnSuccess(TestContext context) {
-        JsonObject message = new JsonObject().put("article", new JsonObject()
-                .put("name", "test article").put("description", "test article description"));
+        JsonObject article = new JsonObject()
+                .put("name", "test article")
+                .put("description", "test article description");
 
-        vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, context.asyncAssertSuccess(result -> {
-            context.assertNotNull(result.body());
-            JsonObject response = (JsonObject) result.body();
-            context.assertEquals(
-                    "{\"name\":\"test article\",\"description\":\"test article description\",\"sentiment\":{\"score\":0.0533933,\"id\":\"1234\"}}",
-                    response.encode());
+        newsAnalyserService.analyseSentiment(article, context.asyncAssertSuccess(result -> {
+            JsonArray documents = sentimentAnalysisResponse.getJsonArray("documents");
+            article.put("sentiment", documents.getJsonObject(0));
+
+            context.assertEquals(article.encodePrettily(), result.encodePrettily());
         }));
     }
 
     @Test
     public void testNewsAnalyserReturnsExpectedJsonResultOnTooManyAttempts(TestContext context) {
-        JsonObject message = new JsonObject().put("article", new JsonObject()
-                .put("name", "error429").put("description", ""));
+        JsonObject article = new JsonObject().put("name", "error429").put("description", "");
 
-        vertx.eventBus().send(NewsAnalyserWorker.ADDRESS, message, context.asyncAssertFailure(cause -> {
-            context.assertEquals(ReplyFailure.RECIPIENT_FAILURE, ((ReplyException) cause).failureType());
-            context.assertEquals(
-                    "{\"error\":{\"statusCode\":429,\"message\":\"Too many requests. Please try again in 49 seconds\"}}",
-                    cause.getMessage());
+        newsAnalyserService.analyseSentiment(article, context.asyncAssertFailure(cause -> {
+            context.assertEquals(sentimentAnalysisResponse.encode(), cause.getMessage());
+        }));
+    }
+
+    @Test
+    public void testNewsAnalyserFailsIfInvalidArticleSupplied(TestContext context) {
+        final JsonObject invalidArticle = new JsonObject().put("invalid", "");
+
+        newsAnalyserService.analyseSentiment(invalidArticle, context.asyncAssertFailure(cause -> {
+            context.assertEquals("Invalid Request", cause.getMessage());
         }));
     }
 }

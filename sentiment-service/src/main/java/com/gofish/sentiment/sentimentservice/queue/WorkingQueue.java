@@ -1,4 +1,4 @@
-package com.gofish.sentiment.sentimentservice;
+package com.gofish.sentiment.sentimentservice.queue;
 
 /**
  * @author Luke Herron

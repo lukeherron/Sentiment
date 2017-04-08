@@ -42,6 +42,10 @@ mongo {
     logging 'console'
 }
 
+tasks.withType(Test) {
+    runWithMongoDb = true
+}
+
 tasks.withType(FindBugs) {
     classes = classes.filter {
         !it.path.contains(new File('com/gofish/sentiment/storage/rxjava').path) &&
@@ -54,10 +58,6 @@ tasks.withType(FindBugs) {
         html.enabled = true
     }
 }
-
-startMongoDb.dependsOn stopMongoDb
-test.dependsOn stopMongoDb
-testIT.dependsOn startMongoDb
 
 run {
     args = [
