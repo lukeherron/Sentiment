@@ -1,10 +1,10 @@
 package com.gofish.sentiment.sentimentservice.monitor;
 
 import com.gofish.sentiment.newscrawler.NewsCrawlerService;
-import com.gofish.sentiment.sentimentservice.PendingQueue;
-import com.gofish.sentiment.sentimentservice.WorkingQueue;
 import com.gofish.sentiment.sentimentservice.article.SentimentArticle;
 import com.gofish.sentiment.sentimentservice.job.*;
+import com.gofish.sentiment.sentimentservice.queue.PendingQueue;
+import com.gofish.sentiment.sentimentservice.queue.WorkingQueue;
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
@@ -140,6 +140,10 @@ public class NewsCrawlerJobMonitor extends AbstractVerticle {
         }));
     }
 
+    /**
+     * Searches the cluster for the service record relating to the Storage module
+     * @return Single which emits the Storage service published to the cluster
+     */
     private Single<StorageService> rxGetStorageService() {
         return serviceDiscovery.rxGetRecord(record -> record.getName().equals(StorageService.NAME))
                 .map(serviceDiscovery::getReference)
