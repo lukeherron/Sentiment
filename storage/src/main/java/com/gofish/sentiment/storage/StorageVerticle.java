@@ -21,7 +21,6 @@ public class StorageVerticle extends AbstractVerticle {
 
     private static final Logger LOG = LoggerFactory.getLogger(StorageVerticle.class);
 
-    private JsonObject config;
     private MongoClient mongo;
     private MessageConsumer<JsonObject> messageConsumer;
     private ServiceDiscovery serviceDiscovery;
@@ -31,13 +30,12 @@ public class StorageVerticle extends AbstractVerticle {
     public void start(Future<Void> startFuture) throws Exception {
         LOG.info("Bringing up StorageVerticle");
 
-        this.config = Optional.ofNullable(config())
-                .orElseThrow(() -> new RuntimeException("Could not load storage service configuration"));
+        JsonObject config = Optional.ofNullable(config()).orElseThrow(() -> new RuntimeException("Could not load storage service configuration"));
 
         // We bring up the mongo client here, even though it is utilised in the worker verticles, and not here.
         // This is to enable us to keep a connection open, and simply close it when this verticle closes, rather than
         // closing it everytime the worker verticle stops (which is after every DB call).
-        mongo = MongoClient.createShared(vertx, config());
+        mongo = MongoClient.createShared(vertx, config);
 
         // Initialise a service proxy and publish it for service discovery
         StorageService storageService = StorageService.create(vertx, config());
