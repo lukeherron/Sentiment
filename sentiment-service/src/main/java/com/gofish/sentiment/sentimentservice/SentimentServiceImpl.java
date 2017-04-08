@@ -1,20 +1,24 @@
 package com.gofish.sentiment.sentimentservice;
 
 import com.gofish.sentiment.sentimentservice.job.CrawlerJob;
+import com.gofish.sentiment.sentimentservice.queue.PendingQueue;
 import com.gofish.sentiment.storage.StorageService;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.redis.RedisClient;
 import io.vertx.redis.RedisOptions;
+import io.vertx.rx.java.RxHelper;
+import io.vertx.rx.java.SingleOnSubscribeAdapter;
+import io.vertx.servicediscovery.Record;
 import io.vertx.servicediscovery.ServiceDiscovery;
-import io.vertx.servicediscovery.types.EventBusService;
-
-import java.util.Optional;
+import io.vertx.servicediscovery.ServiceReference;
+import rx.Single;
 
 /**
  * @author Luke Herron
@@ -36,33 +40,20 @@ public class SentimentServiceImpl implements SentimentService {
 
     @Override
     public SentimentService getSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler) {
-        final Future<JsonObject> sentimentFuture = Future.future();
-
-        getStorageService().compose(storageService ->
-                        storageService.getSentimentResults(query, sentimentFuture.completer()), sentimentFuture);
-
-        sentimentFuture.setHandler(sentimentHandler -> {
-            if (sentimentHandler.succeeded()) {
-                final JsonObject sentimentResult = sentimentHandler.result();
-                if (sentimentResult.isEmpty()) {
-                    // If the result is empty it will be because the query has not been added and analysed. We perform
-                    // both of these steps and then return the results.
-                    addNewQuery(query)
-                            .compose(v -> {
-                                final Future<JsonObject> sentimentResultsFuture = Future.future();
-                                this.analyseSentiment(query, sentimentResultsFuture.completer());
-                                return sentimentResultsFuture;
-                            })
-                            .setHandler(resultHandler);
-                }
-                else {
-                    resultHandler.handle(Future.succeededFuture(sentimentResult));
-                }
-            }
-            else {
-                resultHandler.handle(Future.failedFuture(sentimentHandler.cause()));
-            }
-        });
+        rxGetStorageService()
+                .flatMap(service -> rxGetSentimentResults(query, service))
+                .flatMap(sentimentResult -> {
+                    if (sentimentResult.isEmpty()) {
+                        // If the result is empty it will be because the query has not been added and analysed. We
+                        // perform both of these steps and then return the results.
+                        return rxAddNewQuery(query).flatMap(v ->
+                                Single.create(new SingleOnSubscribeAdapter<>(fut -> analyseSentiment(query, fut))));
+                    }
+                    else {
+                        return Single.just(sentimentResult);
+                    }
+                })
+                .subscribe(RxHelper.toSubscriber(resultHandler));
 
         return this;
     }
@@ -71,10 +62,9 @@ public class SentimentServiceImpl implements SentimentService {
     public SentimentService analyseSentiment(String query, Handler<AsyncResult<JsonObject>> resultHandler) {
         final CrawlerJob job = new CrawlerJob(query);
 
-        vertx.eventBus().<JsonObject>localConsumer("news-crawler:" + job.getJobId(), messageHandler -> {
-            final JsonObject result = Optional.ofNullable(messageHandler.body()).orElseGet(JsonObject::new);
-            resultHandler.handle(Future.succeededFuture(result));
-        });
+        RxHelper.toObservable(vertx.eventBus().<JsonObject>localConsumer("news-crawler:" + job.getJobId()))
+                .map(Message::body)
+                .subscribe(RxHelper.toSubscriber(resultHandler));
 
         // With the listeners ready, we can push the job onto the queue
         redis.lpush(PendingQueue.NEWS_CRAWLER.toString(), job.toJson().encode(), pushHandler -> {
@@ -90,35 +80,46 @@ public class SentimentServiceImpl implements SentimentService {
         return this;
     }
 
-    private Future<Void> addNewQuery(String query) {
-        final Future<Void> addNewQueryFuture = Future.future();
-        final Future<Void> createCollectionFuture = Future.future();
-        final Future<Void> createIndexFuture = Future.future();
+    /**
+     *
+     * @param query The new query to add
+     * @return Single which emits the results of adding a new query to the StorageService
+     */
+    private Single<Void> rxAddNewQuery(String query) {
 
-        // Start by creating a collection in the DB named after the query, then create an index for that collection
-        getStorageService()
-                .compose(storageService -> {
-                    final StorageService service = storageService.createCollection(query, createCollectionFuture.completer());
-                    return Future.succeededFuture(service);
-                })
-                .compose(storageService -> {
+        return rxGetStorageService()
+                .flatMap(service -> Single.create(new SingleOnSubscribeAdapter<Void>(fut ->
+                        service.createCollection(query, fut))).map(r -> service))
+                .flatMap(service -> {
                     final JsonObject collectionIndex = new JsonObject()
                             .put("name", 1)
-                            //.put("datePublished", 1)
                             .put("description", 1);
 
-                    storageService.createIndex(query, collectionIndex, createIndexFuture.completer());
-                    return createIndexFuture;
-                })
-                .setHandler(addNewQueryFuture.completer());
-
-        return addNewQueryFuture;
+                    return Single.create(new SingleOnSubscribeAdapter<Void>(fut ->
+                            service.createIndex(query, collectionIndex, fut)));
+                });
     }
 
-    private Future<StorageService> getStorageService() {
-        final Future<StorageService> storageServiceFuture = Future.future();
-        EventBusService.getProxy(serviceDiscovery, StorageService.class, storageServiceFuture.completer());
+    /**
+     *
+     * @param query The query to search for and retrieve associated sentiment results
+     * @param service StorageService to retrieve sentiment results from
+     * @return Single which emits the stored sentiment results for the specified query
+     */
+    private Single<JsonObject> rxGetSentimentResults(String query, StorageService service) {
 
-        return storageServiceFuture;
+        return Single.create(new SingleOnSubscribeAdapter<>(fut -> service.getSentimentResults(query, fut)));
+    }
+
+    /**
+     * Searches the cluster for the service record relating to the Storage module
+     * @return Single which emits the Storage service published to the cluster
+     */
+    private Single<StorageService> rxGetStorageService() {
+
+        return Single.create(new SingleOnSubscribeAdapter<Record>(fut ->
+                serviceDiscovery.getRecord(record -> record.getName().equals(StorageService.NAME), fut)))
+                .map(serviceDiscovery::getReference)
+                .map(ServiceReference::<StorageService>get);
     }
 }
