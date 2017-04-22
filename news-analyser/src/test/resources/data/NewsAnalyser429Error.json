@@ -1,6 +1,6 @@
 {
   "error": {
     "statusCode": 429,
-    "message": "Too many requests. Please try again in 49 seconds"
+    "message": "Too many requests. Please try again in 1 seconds"
   }
 }

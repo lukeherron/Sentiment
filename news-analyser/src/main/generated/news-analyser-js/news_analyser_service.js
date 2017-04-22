@@ -32,10 +32,12 @@ var NewsAnalyserService = function(j_val) {
   var that = this;
 
   /**
+   Processes a JSON object which must contain a 'value' JSON array of news articles, each article is analysed to
+   and updated with the resulting sentiment score
 
    @public
-   @param json {Object} 
-   @param resultHandler {function} 
+   @param json {Object} JSON object containing the news articles 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
    */
   this.analyseSentiment = function(json, resultHandler) {
     var __args = arguments;
@@ -47,6 +49,38 @@ var NewsAnalyserService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Retrieves the timeout delay which has been set on this service
+
+   @public
+   @param timeoutHandler {function} the result will be returned asynchronously in this handler 
+   */
+  this.getTimeout = function(timeoutHandler) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] === 'function') {
+      j_newsAnalyserService["getTimeout(io.vertx.core.Handler)"](function(ar) {
+      if (ar.succeeded()) {
+        timeoutHandler(utils.convReturnLong(ar.result()), null);
+      } else {
+        timeoutHandler(null, ar.cause());
+      }
+    });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Sets a timeout for this service, any calls to this service interface should respect this delay before proceeding
+
+   @public
+   @param delay {number} the delay to be set 
+   */
+  this.setTimeout = function(delay) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] ==='number') {
+      j_newsAnalyserService["setTimeout(java.lang.Long)"](utils.convParamLong(delay));
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -76,11 +110,12 @@ NewsAnalyserService._create = function(jdel) {
   return obj;
 }
 /**
+ Factory method for creating NewsAnalyserService instance
 
  @memberof module:news-analyser-js/news_analyser_service
- @param vertx {Vertx} 
- @param config {Object} 
- @return {NewsAnalyserService}
+ @param vertx {Vertx} Vertx instance 
+ @param config {Object} JsonObject for configuring the NewsAnalyserService 
+ @return {NewsAnalyserService} NewsAnalyserService object
  */
 NewsAnalyserService.create = function(vertx, config) {
   var __args = arguments;
@@ -90,16 +125,47 @@ NewsAnalyserService.create = function(vertx, config) {
 };
 
 /**
+ Factory method for generating a proxy to access the NewsAnalyserService
 
  @memberof module:news-analyser-js/news_analyser_service
- @param vertx {Vertx} 
- @param address {string} 
- @return {NewsAnalyserService}
+ @param vertx {Vertx} Vertx instance 
+ @param address {string} The address of the news analyser service on the vertx cluster 
+ @return {NewsAnalyserService} NewsAnalyserService object
  */
 NewsAnalyserService.createProxy = function(vertx, address) {
   var __args = arguments;
   if (__args.length === 2 && typeof __args[0] === 'object' && __args[0]._jdel && typeof __args[1] === 'string') {
     return utils.convReturnVertxGen(NewsAnalyserService, JNewsAnalyserService["createProxy(io.vertx.core.Vertx,java.lang.String)"](vertx._jdel, address));
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service name. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-analyser-js/news_analyser_service
+
+ @return {string} String representing the name of this service
+ */
+NewsAnalyserService.name = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsAnalyserService["name()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service address. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-analyser-js/news_analyser_service
+
+ @return {string} String representing the address of this service
+ */
+NewsAnalyserService.address = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsAnalyserService["address()"]();
   } else throw new TypeError('function invoked with invalid arguments');
 };
 

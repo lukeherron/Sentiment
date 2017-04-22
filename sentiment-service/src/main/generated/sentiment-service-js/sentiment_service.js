@@ -32,11 +32,12 @@ var SentimentService = function(j_val) {
   var that = this;
 
   /**
+   Retrieves the currently stored sentiment results for the supplied query
 
    @public
-   @param query {string} 
-   @param resultHandler {function} 
-   @return {SentimentService}
+   @param query {string} String representing the news query to retrieve the sentiment results for 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {SentimentService} SentimentService so this method can be used fluently
    */
   this.getSentiment = function(query, resultHandler) {
     var __args = arguments;
@@ -53,11 +54,12 @@ var SentimentService = function(j_val) {
   };
 
   /**
+   Crawls the news for the provided query keyword and analyses the sentiment of each news article that is found
 
    @public
-   @param query {string} 
-   @param resultHandler {function} 
-   @return {SentimentService}
+   @param query {string} String representing the news query to crawl for and perform sentiment analysis on 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {SentimentService} SentimentService so this method can be used fluently
    */
   this.analyseSentiment = function(query, resultHandler) {
     var __args = arguments;
@@ -99,11 +101,12 @@ SentimentService._create = function(jdel) {
   return obj;
 }
 /**
+ Factory method for creating SentimentService instance
 
  @memberof module:sentiment-service-js/sentiment_service
- @param vertx {Vertx} 
- @param config {Object} 
- @return {SentimentService}
+ @param vertx {Vertx} Vertx instance 
+ @param config {Object} JsonObject for configuring the NewsAnalyserService 
+ @return {SentimentService} NewsAnalyserService object
  */
 SentimentService.create = function(vertx, config) {
   var __args = arguments;
@@ -113,16 +116,47 @@ SentimentService.create = function(vertx, config) {
 };
 
 /**
+ Factory method for generating a proxy to access the SentimentService
 
  @memberof module:sentiment-service-js/sentiment_service
- @param vertx {Vertx} 
- @param address {string} 
- @return {SentimentService}
+ @param vertx {Vertx} Vertx instance 
+ @param address {string} The address of the news analyser service on the vertx cluster 
+ @return {SentimentService} NewsAnalyserService object
  */
 SentimentService.createProxy = function(vertx, address) {
   var __args = arguments;
   if (__args.length === 2 && typeof __args[0] === 'object' && __args[0]._jdel && typeof __args[1] === 'string') {
     return utils.convReturnVertxGen(SentimentService, JSentimentService["createProxy(io.vertx.core.Vertx,java.lang.String)"](vertx._jdel, address));
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service name. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:sentiment-service-js/sentiment_service
+
+ @return {string} String representing the name of this service
+ */
+SentimentService.name = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JSentimentService["name()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service address. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:sentiment-service-js/sentiment_service
+
+ @return {string} String representing the address of this service
+ */
+SentimentService.address = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JSentimentService["address()"]();
   } else throw new TypeError('function invoked with invalid arguments');
 };
 

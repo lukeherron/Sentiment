@@ -43,7 +43,7 @@ public class NewsAnalyserServiceTest {
 
                 switch (request.getJsonArray("documents").getJsonObject(0).getString("text").trim()) {
                     case "error429.":
-                        response.setStatusCode(429);
+                        response.setStatusCode(200);
                         responseURL = getClass().getClassLoader().getResource("data/NewsAnalyser429Error.json");
                         break;
                     default:

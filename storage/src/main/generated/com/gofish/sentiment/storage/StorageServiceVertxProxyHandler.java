@@ -125,6 +125,8 @@ public class StorageServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "createCollection": {
           service.createCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;

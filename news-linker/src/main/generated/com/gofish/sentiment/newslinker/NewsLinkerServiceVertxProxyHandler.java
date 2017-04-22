@@ -124,8 +124,18 @@ public class NewsLinkerServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "linkEntities": {
           service.linkEntities((io.vertx.core.json.JsonObject)json.getValue("document"), createHandler(msg));
+          break;
+        }
+        case "getTimeout": {
+          service.getTimeout(createHandler(msg));
+          break;
+        }
+        case "setTimeout": {
+          service.setTimeout(json.getValue("delay") == null ? null : (json.getLong("delay").longValue()));
           break;
         }
         default: {

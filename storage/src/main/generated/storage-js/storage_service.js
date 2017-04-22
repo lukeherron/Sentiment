@@ -266,4 +266,30 @@ StorageService.createProxy = function(vertx, address) {
   } else throw new TypeError('function invoked with invalid arguments');
 };
 
+/**
+
+ @memberof module:storage-js/storage_service
+
+ @return {string}
+ */
+StorageService.name = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JStorageService["name()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+
+ @memberof module:storage-js/storage_service
+
+ @return {string}
+ */
+StorageService.address = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JStorageService["address()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
 module.exports = StorageService;

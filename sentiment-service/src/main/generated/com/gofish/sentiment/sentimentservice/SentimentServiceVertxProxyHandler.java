@@ -124,6 +124,8 @@ public class SentimentServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "getSentiment": {
           service.getSentiment((java.lang.String)json.getValue("query"), createHandler(msg));
           break;

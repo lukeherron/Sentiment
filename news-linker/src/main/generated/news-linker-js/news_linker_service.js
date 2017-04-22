@@ -32,10 +32,15 @@ var NewsLinkerService = function(j_val) {
   var that = this;
 
   /**
+   Processes a JSON object containing text which is scanned for keywords and subsequently linked to entities that
+   have a possible relation to the keywords. For example, if a news article relating to Apple Inc. is submitted, it
+   is likely to contain the word 'apple'. The entity linker processes this keyword and indicates the likelihood that
+   the article is talking about the fruit, or the Cupertino company. This should help developers and clients make
+   a determination on which articles they would like to filter out.
 
    @public
    @param document {Object} 
-   @param resultHandler {function} 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
    */
   this.linkEntities = function(document, resultHandler) {
     var __args = arguments;
@@ -47,6 +52,38 @@ var NewsLinkerService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Retrieves the timeout delay which has been set on this service
+
+   @public
+   @param timeoutHandler {function} the result will be returned asynchronously in this handler 
+   */
+  this.getTimeout = function(timeoutHandler) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] === 'function') {
+      j_newsLinkerService["getTimeout(io.vertx.core.Handler)"](function(ar) {
+      if (ar.succeeded()) {
+        timeoutHandler(utils.convReturnLong(ar.result()), null);
+      } else {
+        timeoutHandler(null, ar.cause());
+      }
+    });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Sets a timeout for this service, any calls to this service interface should respect this delay before proceeding
+
+   @public
+   @param delay {number} the delay to be set 
+   */
+  this.setTimeout = function(delay) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] ==='number') {
+      j_newsLinkerService["setTimeout(java.lang.Long)"](utils.convParamLong(delay));
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -76,11 +113,12 @@ NewsLinkerService._create = function(jdel) {
   return obj;
 }
 /**
+ Factory method for creating NewsLinkerService instance
 
  @memberof module:news-linker-js/news_linker_service
- @param vertx {Vertx} 
- @param config {Object} 
- @return {NewsLinkerService}
+ @param vertx {Vertx} Vertx instance 
+ @param config {Object} JsonObject for configuring the NewsAnalyserService 
+ @return {NewsLinkerService} NewsAnalyserService object
  */
 NewsLinkerService.create = function(vertx, config) {
   var __args = arguments;
@@ -90,16 +128,47 @@ NewsLinkerService.create = function(vertx, config) {
 };
 
 /**
+ Factory method for generating a proxy to access the NewsLinkerService
 
  @memberof module:news-linker-js/news_linker_service
- @param vertx {Vertx} 
- @param address {string} 
- @return {NewsLinkerService}
+ @param vertx {Vertx} Vertx instance 
+ @param address {string} The address of the news analyser service on the vertx cluster 
+ @return {NewsLinkerService} NewsAnalyserService object
  */
 NewsLinkerService.createProxy = function(vertx, address) {
   var __args = arguments;
   if (__args.length === 2 && typeof __args[0] === 'object' && __args[0]._jdel && typeof __args[1] === 'string') {
     return utils.convReturnVertxGen(NewsLinkerService, JNewsLinkerService["createProxy(io.vertx.core.Vertx,java.lang.String)"](vertx._jdel, address));
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service name. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-linker-js/news_linker_service
+
+ @return {string} String representing the name of this service
+ */
+NewsLinkerService.name = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsLinkerService["name()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service address. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-linker-js/news_linker_service
+
+ @return {string} String representing the address of this service
+ */
+NewsLinkerService.address = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsLinkerService["address()"]();
   } else throw new TypeError('function invoked with invalid arguments');
 };
 

@@ -3,6 +3,7 @@ version '1.0-SNAPSHOT'
 
 dependencies {
     compile "io.vertx:vertx-web-client:${vertxVersion}"
+    compile "io.vertx:vertx-circuit-breaker:${vertxVersion}"
     testCompile "io.vertx:vertx-web:${vertxVersion}"
 }
 

@@ -18,6 +18,7 @@ package com.gofish.sentiment.storage.rxjava;
 
 import java.util.Map;
 import rx.Observable;
+import rx.Single;
 import io.vertx.core.json.JsonArray;
 import io.vertx.rxjava.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -30,25 +31,41 @@ import io.vertx.core.Handler;
  * NOTE: This class has been automatically generated from the {@link com.gofish.sentiment.storage.StorageService original} non RX-ified interface using Vert.x codegen.
  */
 
+@io.vertx.lang.rxjava.RxGen(com.gofish.sentiment.storage.StorageService.class)
 public class StorageService {
 
-  final com.gofish.sentiment.storage.StorageService delegate;
+  public static final io.vertx.lang.rxjava.TypeArg<StorageService> __TYPE_ARG = new io.vertx.lang.rxjava.TypeArg<>(
+    obj -> new StorageService((com.gofish.sentiment.storage.StorageService) obj),
+    StorageService::getDelegate
+  );
 
+  private final com.gofish.sentiment.storage.StorageService delegate;
+  
   public StorageService(com.gofish.sentiment.storage.StorageService delegate) {
     this.delegate = delegate;
   }
 
-  public Object getDelegate() {
+  public com.gofish.sentiment.storage.StorageService getDelegate() {
     return delegate;
   }
 
   public static StorageService create(Vertx vertx, JsonObject config) { 
-    StorageService ret = StorageService.newInstance(com.gofish.sentiment.storage.StorageService.create((io.vertx.core.Vertx)vertx.getDelegate(), config));
+    StorageService ret = StorageService.newInstance(com.gofish.sentiment.storage.StorageService.create(vertx.getDelegate(), config));
     return ret;
   }
 
   public static StorageService createProxy(Vertx vertx, String address) { 
-    StorageService ret = StorageService.newInstance(com.gofish.sentiment.storage.StorageService.createProxy((io.vertx.core.Vertx)vertx.getDelegate(), address));
+    StorageService ret = StorageService.newInstance(com.gofish.sentiment.storage.StorageService.createProxy(vertx.getDelegate(), address));
+    return ret;
+  }
+
+  public static String name() { 
+    String ret = com.gofish.sentiment.storage.StorageService.name();
+    return ret;
+  }
+
+  public static String address() { 
+    String ret = com.gofish.sentiment.storage.StorageService.address();
     return ret;
   }
 
@@ -68,10 +85,10 @@ public class StorageService {
    * @param collectionName the name of the collection to create
    * @return 
    */
-  public Observable<Void> createCollectionObservable(String collectionName) { 
-    io.vertx.rx.java.ObservableFuture<Void> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    createCollection(collectionName, resultHandler.toHandler());
-    return resultHandler;
+  public Single<Void> rxCreateCollection(String collectionName) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      createCollection(collectionName, fut);
+    }));
   }
 
   /**
@@ -94,10 +111,10 @@ public class StorageService {
    * @param collectionIndex json object mapping the fields that will make up the index
    * @return 
    */
-  public Observable<Void> createIndexObservable(String collectionName, JsonObject collectionIndex) { 
-    io.vertx.rx.java.ObservableFuture<Void> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    createIndex(collectionName, collectionIndex, resultHandler.toHandler());
-    return resultHandler;
+  public Single<Void> rxCreateIndex(String collectionName, JsonObject collectionIndex) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      createIndex(collectionName, collectionIndex, fut);
+    }));
   }
 
   /**
@@ -114,10 +131,10 @@ public class StorageService {
    * Retrieves a list of all current collections in mongo storage
    * @return 
    */
-  public Observable<JsonArray> getCollectionsObservable() { 
-    io.vertx.rx.java.ObservableFuture<JsonArray> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    getCollections(resultHandler.toHandler());
-    return resultHandler;
+  public Single<JsonArray> rxGetCollections() { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      getCollections(fut);
+    }));
   }
 
   /**
@@ -138,10 +155,10 @@ public class StorageService {
    * @param collectionName the name of the collection that sentiment results will be retrieved from
    * @return 
    */
-  public Observable<JsonObject> getSentimentResultsObservable(String collectionName) { 
-    io.vertx.rx.java.ObservableFuture<JsonObject> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    getSentimentResults(collectionName, resultHandler.toHandler());
-    return resultHandler;
+  public Single<JsonObject> rxGetSentimentResults(String collectionName) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      getSentimentResults(collectionName, fut);
+    }));
   }
 
   /**
@@ -164,10 +181,10 @@ public class StorageService {
    * @param articleDescription the description of the article which we are searching for
    * @return 
    */
-  public Observable<Boolean> hasArticleObservable(String collectionName, String articleName, String articleDescription) { 
-    io.vertx.rx.java.ObservableFuture<Boolean> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    hasArticle(collectionName, articleName, articleDescription, resultHandler.toHandler());
-    return resultHandler;
+  public Single<Boolean> rxHasArticle(String collectionName, String articleName, String articleDescription) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      hasArticle(collectionName, articleName, articleDescription, fut);
+    }));
   }
 
   /**
@@ -186,10 +203,10 @@ public class StorageService {
    * @param collectionName the name of the collection that sentiment results will be retrieved from
    * @return 
    */
-  public Observable<Boolean> hasCollectionObservable(String collectionName) { 
-    io.vertx.rx.java.ObservableFuture<Boolean> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    hasCollection(collectionName, resultHandler.toHandler());
-    return resultHandler;
+  public Single<Boolean> rxHasCollection(String collectionName) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      hasCollection(collectionName, fut);
+    }));
   }
 
   /**
@@ -210,10 +227,10 @@ public class StorageService {
    * @param collectionName the name of the collection to search
    * @return 
    */
-  public Observable<Boolean> isIndexPresentObservable(String indexName, String collectionName) { 
-    io.vertx.rx.java.ObservableFuture<Boolean> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    isIndexPresent(indexName, collectionName, resultHandler.toHandler());
-    return resultHandler;
+  public Single<Boolean> rxIsIndexPresent(String indexName, String collectionName) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      isIndexPresent(indexName, collectionName, fut);
+    }));
   }
 
   /**
@@ -234,10 +251,10 @@ public class StorageService {
    * @param articles json object containing a list of articles to store
    * @return 
    */
-  public Observable<JsonObject> saveArticlesObservable(String collectionName, JsonArray articles) { 
-    io.vertx.rx.java.ObservableFuture<JsonObject> resultHandler = io.vertx.rx.java.RxHelper.observableFuture();
-    saveArticles(collectionName, articles, resultHandler.toHandler());
-    return resultHandler;
+  public Single<JsonObject> rxSaveArticles(String collectionName, JsonArray articles) { 
+    return Single.create(new io.vertx.rx.java.SingleOnSubscribeAdapter<>(fut -> {
+      saveArticles(collectionName, articles, fut);
+    }));
   }
 
 

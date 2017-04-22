@@ -32,10 +32,11 @@ var NewsCrawlerService = function(j_val) {
   var that = this;
 
   /**
+   Searches the news via the Bing News Search API, returning any results which are related to the supplied query
 
    @public
-   @param query {string} 
-   @param resultHandler {function} 
+   @param query {string} String query which represents the news search term 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
    */
   this.crawlQuery = function(query, resultHandler) {
     var __args = arguments;
@@ -47,6 +48,38 @@ var NewsCrawlerService = function(j_val) {
         resultHandler(null, ar.cause());
       }
     });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Retrieves the timeout delay which has been set on this service
+
+   @public
+   @param timeoutHandler {function} the result will be returned asynchronously in this handler 
+   */
+  this.getTimeout = function(timeoutHandler) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] === 'function') {
+      j_newsCrawlerService["getTimeout(io.vertx.core.Handler)"](function(ar) {
+      if (ar.succeeded()) {
+        timeoutHandler(utils.convReturnLong(ar.result()), null);
+      } else {
+        timeoutHandler(null, ar.cause());
+      }
+    });
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
+   Sets a timeout for this service, any calls to this service interface should respect this delay before proceeding
+
+   @public
+   @param delay {number} the delay to be set 
+   */
+  this.setTimeout = function(delay) {
+    var __args = arguments;
+    if (__args.length === 1 && typeof __args[0] ==='number') {
+      j_newsCrawlerService["setTimeout(java.lang.Long)"](utils.convParamLong(delay));
     } else throw new TypeError('function invoked with invalid arguments');
   };
 
@@ -76,11 +109,12 @@ NewsCrawlerService._create = function(jdel) {
   return obj;
 }
 /**
+ Factory methods for creating NewsCrawlerService instance
 
  @memberof module:news-crawler-js/news_crawler_service
- @param vertx {Vertx} 
- @param config {Object} 
- @return {NewsCrawlerService}
+ @param vertx {Vertx} Vertx instance 
+ @param config {Object} JsonObject for configuring the NewsCrawlerService 
+ @return {NewsCrawlerService} NewsCrawlerService object
  */
 NewsCrawlerService.create = function(vertx, config) {
   var __args = arguments;
@@ -90,16 +124,47 @@ NewsCrawlerService.create = function(vertx, config) {
 };
 
 /**
+ Factory method for generating a proxy to access the NewsAnalyserService
 
  @memberof module:news-crawler-js/news_crawler_service
- @param vertx {Vertx} 
- @param address {string} 
- @return {NewsCrawlerService}
+ @param vertx {Vertx} Vertx instance 
+ @param address {string} The address of the news crawler service on the vertx cluster 
+ @return {NewsCrawlerService} NewsCrawlerService object
  */
 NewsCrawlerService.createProxy = function(vertx, address) {
   var __args = arguments;
   if (__args.length === 2 && typeof __args[0] === 'object' && __args[0]._jdel && typeof __args[1] === 'string') {
     return utils.convReturnVertxGen(NewsCrawlerService, JNewsCrawlerService["createProxy(io.vertx.core.Vertx,java.lang.String)"](vertx._jdel, address));
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service name. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-crawler-js/news_crawler_service
+
+ @return {string} String representing the name of this service
+ */
+NewsCrawlerService.name = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsCrawlerService["name()"]();
+  } else throw new TypeError('function invoked with invalid arguments');
+};
+
+/**
+ Convenience method for accessing the service address. Used primarily for the vertx generated rx version of this
+ class, which does not have access to the constant declared in this interface
+
+ @memberof module:news-crawler-js/news_crawler_service
+
+ @return {string} String representing the address of this service
+ */
+NewsCrawlerService.address = function() {
+  var __args = arguments;
+  if (__args.length === 0) {
+    return JNewsCrawlerService["address()"]();
   } else throw new TypeError('function invoked with invalid arguments');
 };
 

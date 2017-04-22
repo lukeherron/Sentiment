@@ -124,8 +124,18 @@ public class NewsCrawlerServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "crawlQuery": {
           service.crawlQuery((java.lang.String)json.getValue("query"), createHandler(msg));
+          break;
+        }
+        case "getTimeout": {
+          service.getTimeout(createHandler(msg));
+          break;
+        }
+        case "setTimeout": {
+          service.setTimeout(json.getValue("delay") == null ? null : (json.getLong("delay").longValue()));
           break;
         }
         default: {
