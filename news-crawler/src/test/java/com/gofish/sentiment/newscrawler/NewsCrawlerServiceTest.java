@@ -41,7 +41,7 @@ public class NewsCrawlerServiceTest {
 
             switch (q) {
                 case "error429":
-                    response.setStatusCode(429);
+                    response.setStatusCode(200); // Microsoft API sends a 200 reponse with the 429 error wrapped in the response json
                     responseURL = getClass().getClassLoader().getResource("data/NewsCrawler429Error.json");
                     break;
                 default:
