@@ -9,7 +9,7 @@ import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import org.junit.Before;
-import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -21,8 +21,8 @@ import java.net.URL;
 @RunWith(VertxUnitRunner.class)
 public class NewsLinkerServiceTest {
 
-    @ClassRule
-    public static final RunTestOnContext vertxRule = new RunTestOnContext();
+    @Rule
+    public final RunTestOnContext vertxRule = new RunTestOnContext();
 
     private Vertx vertx;
     private NewsLinkerService newsLinkerService;
@@ -41,7 +41,7 @@ public class NewsLinkerServiceTest {
 
                 switch (request) {
                     case "error429.":
-                        response.setStatusCode(429);
+                        response.setStatusCode(200);
                         responseURL = getClass().getClassLoader().getResource("data/NewsLinker429Error.json");
                         break;
                     default:
@@ -90,11 +90,7 @@ public class NewsLinkerServiceTest {
                 .put("about", new JsonArray().add(new JsonObject().put("name", "entity1 test")));
 
         newsLinkerService.linkEntities(article, context.asyncAssertFailure(cause -> {
-            URL responseURL = getClass().getClassLoader().getResource("data/NewsLinker429Error.json");
-            assert responseURL != null;
-            JsonObject errorResponse = vertx.fileSystem().readFileBlocking(responseURL.getFile()).toJsonObject();
-
-            context.assertEquals(errorResponse.encode(), cause.getMessage());
+            context.assertEquals(new JsonObject().put("error", entityLinkingResponse).encode(), cause.getMessage());
         }));
     }
 
