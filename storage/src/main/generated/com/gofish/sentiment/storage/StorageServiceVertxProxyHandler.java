@@ -125,6 +125,8 @@ public class StorageServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "createCollection": {
           service.createCollection((java.lang.String)json.getValue("collectionName"), createHandler(msg));
           break;
@@ -139,6 +141,10 @@ public class StorageServiceVertxProxyHandler extends ProxyHandler {
         }
         case "getSentimentResults": {
           service.getSentimentResults((java.lang.String)json.getValue("collectionName"), createHandler(msg));
+          break;
+        }
+        case "hasArticle": {
+          service.hasArticle((java.lang.String)json.getValue("collectionName"), (java.lang.String)json.getValue("articleName"), (java.lang.String)json.getValue("articleDescription"), createHandler(msg));
           break;
         }
         case "hasCollection": {

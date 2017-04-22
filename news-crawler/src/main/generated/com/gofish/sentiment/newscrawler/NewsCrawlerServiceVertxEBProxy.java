@@ -82,6 +82,34 @@ public class NewsCrawlerServiceVertxEBProxy implements NewsCrawlerService {
     });
   }
 
+  public void getTimeout(Handler<AsyncResult<Long>> timeoutHandler) {
+    if (closed) {
+      timeoutHandler.handle(Future.failedFuture(new IllegalStateException("Proxy is closed")));
+      return;
+    }
+    JsonObject _json = new JsonObject();
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "getTimeout");
+    _vertx.eventBus().<Long>send(_address, _json, _deliveryOptions, res -> {
+      if (res.failed()) {
+        timeoutHandler.handle(Future.failedFuture(res.cause()));
+      } else {
+        timeoutHandler.handle(Future.succeededFuture(res.result().body()));
+      }
+    });
+  }
+
+  public void setTimeout(Long delay) {
+    if (closed) {
+      throw new IllegalStateException("Proxy is closed");
+    }
+    JsonObject _json = new JsonObject();
+    _json.put("delay", delay);
+    DeliveryOptions _deliveryOptions = (_options != null) ? new DeliveryOptions(_options) : new DeliveryOptions();
+    _deliveryOptions.addHeader("action", "setTimeout");
+    _vertx.eventBus().send(_address, _json, _deliveryOptions);
+  }
+
 
   private List<Character> convertToListChar(JsonArray arr) {
     List<Character> list = new ArrayList<>();

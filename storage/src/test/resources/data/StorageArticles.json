@@ -1,0 +1,69 @@
+[ {
+  "name" : "Shares in UK chipmaker dive 60 pct after Apple ends contract",
+  "url" : "https://www.bing.com/cr?IG=5713D6EDBDA743ABA3853EA5D5376EE1&CID=1265386FB51366820D993236B4F467B7&rd=1&h=9ElgzktkTgJN9xMTN7SEcOW4yEI2gohTksVjt-4ToPs&v=1&r=https%3a%2f%2fwww.washingtonpost.com%2fworld%2feurope%2fshares-in-uk-chipmaker-dive-66-pct-after-apple-ends-contract%2f2017%2f04%2f03%2f792cbbb8-184e-11e7-8598-9a99da559f9e_story.html&p=DevEx,5040.1",
+  "image" : {
+    "thumbnail" : {
+      "contentUrl" : "https://www.bing.com/th?id=ON.AF9BDC2AF6C1B8F9DD3B5C24BE3B3EEA&pid=News",
+      "width" : 180,
+      "height" : 96
+    }
+  },
+  "description" : "LONDON ÔÇö Shares in chipmaker Imagination Technologies plunged over 60 percent on Monday after the British company announced that Apple plans to stop using its products. The development highlights how, through its sheer size, AppleÔÇÖs decisions can make ...",
+  "about" : [ {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+    "name" : "Apple Inc."
+  }, {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/7802f29d-d7cc-5e6f-de8a-63a5a1a2f17f",
+    "name" : "The Washington Post"
+  }, {
+    "name" : "United Kingdom",
+    "readLink" : ""
+  }, {
+    "name" : "Imagination Technologies",
+    "readLink" : ""
+  } ],
+  "provider" : [ {
+    "_type" : "Organization",
+    "name" : "Washington Post"
+  } ],
+  "datePublished" : "2017-04-03T11:57:00",
+  "sentimentUUID" : "ec08c3d5-14a5-46e9-a7fe-f82d5c0b1c8e",
+  "sentiment" : {
+    "score" : 0.508546,
+    "id" : "3e6b3ec3-dbc5-4a77-9ba7-2de56d96bdfd"
+  }
+}, {
+  "name" : "Apple wants to sell HBO, Showtime and Starz in new premium TV bundle",
+  "url" : "https://www.bing.com/cr?IG=5713D6EDBDA743ABA3853EA5D5376EE1&CID=1265386FB51366820D993236B4F467B7&rd=1&h=SDOCxg_ob9izZzr2UmNga_BOvc0MxfPYI7Tf_Ei6k-8&v=1&r=https%3a%2f%2fthenextweb.com%2fapple%2f2017%2f04%2f03%2fapple-hbo-showtime-tv-bundle%2f&p=DevEx,5084.1",
+  "description" : "Apple is giving yet another shot at making it big in the movie and television streaming industry. The Cupertino heavyweight has purportedly reached out to popular television networks HBO, Showtime and Starz with a proposition to sell subscriptions to ...",
+  "about" : [ {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+    "name" : "Apple Inc."
+  }, {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/07e44347-7b20-b101-fac5-54444757f1aa",
+    "name" : "HBO"
+  }, {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/a16ed999-0c86-ae20-fb5e-500e2c2ccb86",
+    "name" : "Starz"
+  }, {
+    "name" : "Showtime",
+    "readLink" : ""
+  }, {
+    "name" : "Pay television",
+    "readLink" : ""
+  }, {
+    "name" : "Cupertino",
+    "readLink" : ""
+  } ],
+  "provider" : [ {
+    "_type" : "Organization",
+    "name" : "The Next Web"
+  } ],
+  "datePublished" : "2017-04-03T12:55:00",
+  "category" : "ScienceAndTechnology",
+  "sentimentUUID" : "7b4f1c45-bed7-44eb-bb4e-0cd0114805ab",
+  "sentiment" : {
+    "score" : 0.2640736,
+    "id" : "b4b73ddb-e904-47df-b940-b9cc71d00727"
+  }
+} ]

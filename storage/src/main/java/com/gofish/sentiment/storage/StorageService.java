@@ -17,7 +17,7 @@ import io.vertx.serviceproxy.ProxyHelper;
 @VertxGen
 public interface StorageService {
 
-    String NAME = "sentiment-eventbus-service";
+    String NAME = "storage-eventbus-service";
     String ADDRESS = "sentiment.storage";
 
     static StorageService create(Vertx vertx, JsonObject config) {
@@ -26,6 +26,14 @@ public interface StorageService {
 
     static StorageService createProxy(Vertx vertx, String address) {
         return ProxyHelper.createProxy(StorageService.class, vertx, address);
+    }
+
+    static String name() {
+        return NAME;
+    }
+
+    static String address() {
+        return ADDRESS;
     }
 
     /**
@@ -65,6 +73,17 @@ public interface StorageService {
      */
     @Fluent
     StorageService getSentimentResults(String collectionName, Handler<AsyncResult<JsonObject>> resultHandler);
+
+    /**
+     * Checks if an article with a specific name and description is currently contained in mongo storage
+     *
+     * @param collectionName the name of the collection that the article search will be conducted within
+     * @param articleName the name of the article which we are searching for
+     * @param articleDescription the description of the article which we are searching for
+     * @param resultHandler the result will be returned asynchronously in this handler
+     */
+    @Fluent
+    StorageService hasArticle(String collectionName, String articleName, String articleDescription, Handler<AsyncResult<Boolean>> resultHandler);
 
     /**
      * Checks if the specified collection is currently contained in mongo storage.

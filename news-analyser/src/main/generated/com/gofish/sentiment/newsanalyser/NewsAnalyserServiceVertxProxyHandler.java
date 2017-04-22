@@ -124,8 +124,18 @@ public class NewsAnalyserServiceVertxProxyHandler extends ProxyHandler {
       switch (action) {
 
 
+
+
         case "analyseSentiment": {
           service.analyseSentiment((io.vertx.core.json.JsonObject)json.getValue("json"), createHandler(msg));
+          break;
+        }
+        case "getTimeout": {
+          service.getTimeout(createHandler(msg));
+          break;
+        }
+        case "setTimeout": {
+          service.setTimeout(json.getValue("delay") == null ? null : (json.getLong("delay").longValue()));
           break;
         }
         default: {

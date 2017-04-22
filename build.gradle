@@ -7,7 +7,7 @@ group 'gofish'
 version '1.0-SNAPSHOT'
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '3.3'
+    gradleVersion = '3.4'
     distributionUrl = "https://services.gradle.org/distributions/gradle-$gradleVersion-all.zip"
 }
 
@@ -20,7 +20,7 @@ reporting {
     baseDir "reports"
 }
 
-ext { vertxVersion = "3.3.3"; junitVersion = "4.12"; mockitoVersion = "2.+" }
+ext { vertxVersion = "3.4.1"; junitVersion = "4.12"; mockitoVersion = "2.+" }
 
 configure (subprojects) { project ->
     apply plugin: 'java'
@@ -41,9 +41,10 @@ configure (subprojects) { project ->
         compile ("io.vertx:vertx-rx-java:${vertxVersion}")
         compile ("io.vertx:vertx-service-discovery:${vertxVersion}")
         compile ("io.vertx:vertx-service-proxy:${vertxVersion}")
+        //compile ("io.vertx:vertx-service-proxy:${vertxVersion}:processor")
         compile ("biz.paluch.logging:logstash-gelf:1.10.0")
 
-        compileOnly ('io.vertx:vertx-codegen:3.3.3')
+        compileOnly ("io.vertx:vertx-codegen:${vertxVersion}")
 
         testCompile ("io.vertx:vertx-unit:${vertxVersion}")
         testCompile ("junit:junit:${junitVersion}")
@@ -62,8 +63,15 @@ configure (subprojects) { project ->
         options.compilerArgs = [
                 "-proc:only",
                 "-processor", "io.vertx.codegen.CodeGenProcessor",
-                "-AoutputDirectory=${project.projectDir}/src/main"
+                "-Acodegen.output=${project.projectDir}/src/main"
         ]
+    }
+
+    compileJava {
+        targetCompatibility = 1.8
+        sourceCompatibility = 1.8
+
+        dependsOn annotationProcessing
     }
 
     task jacocoTestITReport(type: JacocoReport) {
@@ -107,6 +115,13 @@ configure (subprojects) { project ->
     tasks.withType(Test) {
         reports {
             junitXml.enabled = false
+            html.enabled = true
+        }
+    }
+
+    tasks.withType(FindBugs) {
+        reports {
+            xml.enabled = false
             html.enabled = true
         }
     }

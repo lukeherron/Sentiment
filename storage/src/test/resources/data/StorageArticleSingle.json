@@ -1,0 +1,38 @@
+[ {
+  "name" : "Apple to develop game-changing iPhone component",
+  "url" : "http://www.bing.com/cr?IG=C2C789175744467DABA2384010427180&CID=07A6E3B809E06E59328EE9E108076FF8&rd=1&h=vZvHhi8nV6WhQYdT9zrf_D_Gu78HyNDtyd4y64m8Qdc&v=1&r=http%3a%2f%2fbgr.com%2f2017%2f04%2f03%2fiphone-ipad-and-mac-apples-gpu%2f&p=DevEx,5072.1",
+  "image" : {
+    "thumbnail" : {
+      "contentUrl" : "https://www.bing.com/th?id=ON.8795CE223915B48DE74FFDCC145BFAD2&pid=News",
+      "width" : 700,
+      "height" : 466
+    }
+  },
+  "description" : "Well, Imagination that! Apple just confirmed something that weÔÇÖve been suspecting for a while now. The company is indeed working on its own graphics processing unit that could power iPhones, iPads ÔÇö and Macs? ÔÇö inthe future, and that spells trouble ...",
+  "about" : [ {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/6fa57c29-e813-4a1d-7fba-3541ca4c1dc3",
+    "name" : "Apple Inc."
+  }, {
+    "readLink" : "https://api.cognitive.microsoft.com/api/v5/entities/ceeab753-899f-4459-8ceb-d64ec0992439",
+    "name" : "iPhone"
+  }, {
+    "name" : "Imagination Technologies",
+    "readLink" : ""
+  }, {
+    "name" : "iPad",
+    "readLink" : ""
+  }, {
+    "name" : "Macintosh",
+    "readLink" : ""
+  } ],
+  "provider" : [ {
+    "_type" : "Organization",
+    "name" : "BGR"
+  } ],
+  "datePublished" : "2017-04-03T17:30:00",
+  "sentimentUUID" : "3770a268-16ee-4dde-ab56-312f7d8f3197",
+  "sentiment" : {
+    "score" : 0.8399433,
+    "id" : "2aea0f7b-1927-4ce5-9b13-72e45389536e"
+  }
+} ]

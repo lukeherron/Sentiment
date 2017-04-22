@@ -122,6 +122,30 @@ var StorageService = function(j_val) {
   };
 
   /**
+   Checks if an article with a specific name and description is currently contained in mongo storage
+
+   @public
+   @param collectionName {string} the name of the collection that the article search will be conducted within 
+   @param articleName {string} the name of the article which we are searching for 
+   @param articleDescription {string} the description of the article which we are searching for 
+   @param resultHandler {function} the result will be returned asynchronously in this handler 
+   @return {StorageService}
+   */
+  this.hasArticle = function(collectionName, articleName, articleDescription, resultHandler) {
+    var __args = arguments;
+    if (__args.length === 4 && typeof __args[0] === 'string' && typeof __args[1] === 'string' && typeof __args[2] === 'string' && typeof __args[3] === 'function') {
+      j_storageService["hasArticle(java.lang.String,java.lang.String,java.lang.String,io.vertx.core.Handler)"](collectionName, articleName, articleDescription, function(ar) {
+      if (ar.succeeded()) {
+        resultHandler(ar.result(), null);
+      } else {
+        resultHandler(null, ar.cause());
+      }
+    });
+      return that;
+    } else throw new TypeError('function invoked with invalid arguments');
+  };
+
+  /**
    Checks if the specified collection is currently contained in mongo storage.
 
    @public

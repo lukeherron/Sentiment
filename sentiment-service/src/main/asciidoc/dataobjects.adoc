@@ -1,7 +1,7 @@
 = Cheatsheets
 
-[[SentimentJob]]
-== SentimentJob
+[[AnalyserJob]]
+== AnalyserJob
 
 ++++
 ++++
@@ -11,14 +11,68 @@
 [frame="topbot"]
 |===
 ^|Name | Type ^| Description
-|[[entityLinkingResponse]]`entityLinkingResponse`|`Json object`|-
-|[[failed]]`failed`|`Number (int)`|-
+|[[attempts]]`attempts`|`Number (int)`|-
 |[[jobId]]`jobId`|`String`|-
-|[[newsSearchResponse]]`newsSearchResponse`|`Json object`|-
-|[[query]]`query`|`String`|-
+|[[payload]]`payload`|`Json object`|-
 |[[result]]`result`|`Json object`|-
-|[[sentimentResponse]]`sentimentResponse`|`Json object`|-
+|[[retryStrategy]]`retryStrategy`|`Json object`|-
 |[[state]]`state`|`link:enums.html#State[State]`|-
 |[[timeout]]`timeout`|`Number (long)`|-
+|===
+
+[[CrawlerJob]]
+== CrawlerJob
+
+++++
+++++
+'''
+
+[cols=">25%,^25%,50%"]
+[frame="topbot"]
+|===
+^|Name | Type ^| Description
+|[[attempts]]`attempts`|`Number (int)`|-
+|[[jobId]]`jobId`|`String`|-
+|[[payload]]`payload`|`Json object`|-
+|[[result]]`result`|`Json object`|-
+|[[retryStrategy]]`retryStrategy`|`Json object`|-
+|[[state]]`state`|`link:enums.html#State[State]`|-
+|[[timeout]]`timeout`|`Number (long)`|-
+|===
+
+[[LinkerJob]]
+== LinkerJob
+
+++++
+++++
+'''
+
+[cols=">25%,^25%,50%"]
+[frame="topbot"]
+|===
+^|Name | Type ^| Description
+|[[attempts]]`attempts`|`Number (int)`|-
+|[[jobId]]`jobId`|`String`|-
+|[[payload]]`payload`|`Json object`|-
+|[[result]]`result`|`Json object`|-
+|[[retryStrategy]]`retryStrategy`|`Json object`|-
+|[[state]]`state`|`link:enums.html#State[State]`|-
+|[[timeout]]`timeout`|`Number (long)`|-
+|===
+
+[[RetryStrategy]]
+== RetryStrategy
+
+++++
+++++
+'''
+
+[cols=">25%,^25%,50%"]
+[frame="topbot"]
+|===
+^|Name | Type ^| Description
+|[[retryDelay]]`retryDelay`|`Number (int)`|-
+|[[timeout]]`timeout`|`Number (long)`|-
+|[[timestamp]]`timestamp`|`Number (long)`|-
 |===
 
