@@ -1,36 +1,29 @@
 package com.gofish.sentiment.sentimentservice;
 
-import com.gofish.sentiment.sentimentservice.monitor.NewsAnalyserJobMonitor;
-import com.gofish.sentiment.sentimentservice.monitor.NewsCrawlerJobMonitor;
-import com.gofish.sentiment.sentimentservice.monitor.NewsLinkerJobMonitor;
-import com.gofish.sentiment.storage.StorageService;
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.CompositeFuture;
-import io.vertx.core.DeploymentOptions;
+import com.gofish.sentiment.newsanalyser.rxjava.NewsAnalyserService;
+import com.gofish.sentiment.newscrawler.rxjava.NewsCrawlerService;
+import com.gofish.sentiment.newslinker.NewsLinkerService;
+import com.gofish.sentiment.storage.rxjava.StorageService;
 import io.vertx.core.Future;
 import io.vertx.core.eventbus.MessageConsumer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
-import io.vertx.redis.RedisClient;
-import io.vertx.redis.RedisOptions;
+import io.vertx.rx.java.ObservableFuture;
 import io.vertx.rx.java.RxHelper;
 import io.vertx.rx.java.SingleOnSubscribeAdapter;
+import io.vertx.rxjava.core.AbstractVerticle;
+import io.vertx.rxjava.servicediscovery.ServiceDiscovery;
+import io.vertx.rxjava.servicediscovery.types.EventBusService;
 import io.vertx.servicediscovery.Record;
-import io.vertx.servicediscovery.ServiceDiscovery;
-import io.vertx.servicediscovery.ServiceReference;
-import io.vertx.servicediscovery.types.EventBusService;
 import io.vertx.serviceproxy.ProxyHelper;
-import rx.Completable;
 import rx.Observable;
 import rx.Single;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * @author Luke Herron
@@ -41,7 +34,7 @@ public class SentimentServiceVerticle extends AbstractVerticle {
     private static final Logger LOG = LoggerFactory.getLogger(SentimentServiceVerticle.class);
 
     private JsonObject config;
-    private SentimentService sentimentService;
+    private com.gofish.sentiment.sentimentservice.rxjava.SentimentService sentimentService;
     private MessageConsumer<JsonObject> messageConsumer;
     private ServiceDiscovery serviceDiscovery;
     private Record record;
@@ -53,124 +46,94 @@ public class SentimentServiceVerticle extends AbstractVerticle {
         this.config = Optional.ofNullable(config())
                 .orElseThrow(() -> new RuntimeException("Could not load sentiment service configuration"));
 
-        Future<Record> publishFuture = Future.future();
-        Future<String> jobQueueFuture = Future.future();
+        sentimentService = com.gofish.sentiment.sentimentservice.rxjava.SentimentService.create(vertx, config);
+        messageConsumer = ProxyHelper.registerService(SentimentService.class, vertx.getDelegate(), sentimentService.getDelegate(), SentimentService.ADDRESS);
 
-        sentimentService = SentimentService.create(vertx, config);
-        messageConsumer = ProxyHelper.registerService(SentimentService.class, vertx, sentimentService, SentimentService.ADDRESS);
-        serviceDiscovery = ServiceDiscovery.create(vertx);
-        record = EventBusService.createRecord(SentimentService.NAME, SentimentService.ADDRESS, SentimentService.class);
+        // List the service dependencies that are required for this service to perform its operations successfully
+        // TODO: move this into the vertx configuration i.e. add it to external configuration which is loaded with the verticle
+        JsonArray serviceDependencies = new JsonArray()
+                .add(NewsAnalyserService.name())
+                .add(NewsCrawlerService.name())
+                .add(NewsLinkerService.name())
+                .add(StorageService.name());
 
-        serviceDiscovery.publish(record, publishFuture.completer());
+        serviceDiscovery = ServiceDiscovery.create(vertx, serviceDiscovery -> {
+            LOG.info("Service Discovery initialised");
+            record = EventBusService.createRecord(SentimentService.NAME, SentimentService.ADDRESS, SentimentService.class.getName());
 
-        // NewsCrawler workers immediately start polling the redis job queue on launch, so ensure that the redis service
-        // is actually up and running (and responds to a ping) before launching the workers.
-        RedisClient.create(vertx, new RedisOptions().setHost("redis")).ping(jobQueueFuture.completer());
+            // Publish the service
+            serviceDiscovery.rxPublish(record).subscribe(LOG::info, LOG::error);
 
-        // Once we know this verticles service has been announced to the cluster and our job queue is up and running,
-        // we can go ahead and deploy the workers that monitor our queues and the timed crawler which will start
-        // generating jobs and putting them into the queues
-        CompositeFuture.all(publishFuture, jobQueueFuture).setHandler(resultHandler ->
-                deployQueueMonitors()
-                        .doOnCompleted(this::startPeriodicCrawl)
-                        .subscribe(RxHelper.toSubscriber(startFuture.completer())));
-    }
-
-    private Completable deployQueueMonitors() {
-        // Deploy worker verticles which poll each pending job queue
-        int instances = Runtime.getRuntime().availableProcessors();
-        DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(config).setWorker(true).setInstances(instances);
-        List<Future> deployFutures = new ArrayList<>();
-
-        Arrays.asList(
-                NewsCrawlerJobMonitor.class.getName(),
-                NewsLinkerJobMonitor.class.getName(),
-                NewsAnalyserJobMonitor.class.getName()
-        ).forEach(verticleWorker -> {
-            Future<String> deployFuture = Future.future();
-            deployFutures.add(deployFuture);
-            vertx.deployVerticle(verticleWorker, deploymentOptions, deployFuture.completer());
+            // and wait for service dependencies to be available before marking the verticle as started
+            serviceDiscovery.rxGetRecords((JsonObject) null)
+                    .doOnSuccess(r -> LOG.info("Searching for service dependencies"))
+                    .map(records -> records.stream().map(Record::getName).collect(Collectors.toList()).containsAll(serviceDependencies.getList()))
+                    .flatMap(dependenciesMet -> dependenciesMet ? Single.<Void>just(null) : Single.error(new Throwable()))
+                    .retryWhen(errors -> errors.flatMap(error -> Observable.timer(5, TimeUnit.SECONDS)))
+                    .doOnSuccess(v -> startPeriodicCrawl())
+                    .subscribe(RxHelper.toSubscriber(startFuture));
         });
-
-        return Single.create(new SingleOnSubscribeAdapter<CompositeFuture>(fut ->
-                CompositeFuture.all(deployFutures).setHandler(fut))).toCompletable();
-    }
-
-    private void startPeriodicCrawl() {
-        RxHelper.toObservable(vertx.periodicStream(config.getInteger("timer.delay", DEFAULT_TIMER_DELAY)))
-                .flatMapSingle(id -> rxGetStorageService())
-                .retryWhen(this::rxGetRetryStrategy)
-                .flatMapSingle(this::rxGetCollections)
-                .flatMap(Observable::from)
-                .map(query -> (String) query)
-                .flatMapSingle(this::rxStartAnalysis)
-                .subscribe(
-                        result -> LOG.info("Queued crawl request for query: " + result),
-                        failure -> LOG.error(failure),
-                        () -> LOG.info("Periodic crawl is complete"));
-    }
-
-    /**
-     * Retrieves a list of all current collections from the Storage service
-     * @return Single which emits all available collection found in Storage service
-     */
-    private Single<JsonArray> rxGetCollections(StorageService service) {
-        return Single.create(new SingleOnSubscribeAdapter<>(service::getCollections))
-                .doOnEach(notification -> ServiceDiscovery.releaseServiceObject(serviceDiscovery, service));
-    }
-
-    /**
-     * Searches the cluster for the service record relating to the Storage module
-     * @return Single which emits the Storage service published to the cluster
-     */
-    private Single<StorageService> rxGetStorageService() {
-
-        return Single.create(new SingleOnSubscribeAdapter<Record>(fut ->
-                serviceDiscovery.getRecord(record -> record.getName().equals(StorageService.NAME), fut)))
-                .map(serviceDiscovery::getReference)
-                .map(ServiceReference::<StorageService>get);
-    }
-
-    /**
-     * Searches the cluster for the service record relating to the SentimentService module
-     * @return Single which emits the SentimentService service published to the cluster
-     */
-    private Single<SentimentService> rxGetSentimentService() {
-
-        return Single.create(new SingleOnSubscribeAdapter<Record>(fut ->
-                serviceDiscovery.getRecord(record -> record.getName().equals(SentimentService.NAME), fut)))
-                .map(serviceDiscovery::getReference)
-                .map(ServiceReference::<SentimentService>get);
-    }
-
-    private Observable<Long> rxGetRetryStrategy(Observable<? extends Throwable> attempts) {
-        return attempts.zipWith(Observable.range(1, 100), (n, i) -> i)
-                .flatMap(i -> Observable.timer(i, TimeUnit.SECONDS));
-    }
-
-    private Single<String> rxStartAnalysis(String query) {
-        return rxGetSentimentService()
-                // We aren't concerned with returning results from the analysis, as we won't be using them
-                // i.e. we only want to queue the jobs and let them run on their own. We provide a handler
-                // out of necessity but we do not wait on it and simply return the original query
-                .map(service -> service.analyseSentiment(query, resultHandler -> {}))
-                .map(service -> {
-                    ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
-                    return query;
-                });
     }
 
     @Override
     public void stop(Future<Void> stopFuture) throws Exception {
-        Future<Void> recordUnpublishFuture = Future.future();
-        Future<Void> messageConsumerUnregisterFuture = Future.future();
+        ObservableFuture<Void> messageConsumerObservable = new ObservableFuture<>();
+        serviceDiscovery.rxUnpublish(record.getRegistration())
+                .flatMapObservable(v -> {
+                    messageConsumer.unregister(messageConsumerObservable.toHandler());
+                    return messageConsumerObservable;
+                })
+                .doOnNext(v -> serviceDiscovery.close())
+                .subscribe(RxHelper.toSubscriber(stopFuture));
+    }
 
-        serviceDiscovery.unpublish(record.getRegistration(), recordUnpublishFuture.completer());
-        messageConsumer.unregister(messageConsumerUnregisterFuture.completer());
+    /**
+     * Starts the news crawler and analysis, which continually repeats at the set interval
+     */
+    private void startPeriodicCrawl() {
+        vertx.periodicStream(config.getInteger("timer.delay", DEFAULT_TIMER_DELAY))
+                .toObservable()
+                .flatMapSingle(id -> rxGetCrawlData())
+                .flatMap(Observable::from).cast(String.class)
+                .flatMapSingle(query -> sentimentService.rxAnalyseSentiment(query))
+                .onErrorResumeNext(error -> {
+                    error.printStackTrace();
+                    return Observable.just(new JsonObject());
+                })
+                .subscribe(LOG::info, LOG::error, () -> LOG.info("Periodic crawl complete"));
+    }
 
-        recordUnpublishFuture.compose(v -> {
-            serviceDiscovery.close();
-            return messageConsumerUnregisterFuture;
-        }).setHandler(stopFuture.completer());
+    /**
+     * Retrieves each collection from storage, each collection name represents the news search query i.e. the crawl data
+     * @return Single that emits the list of collections in storage
+     */
+    private Single<JsonArray> rxGetCrawlData() {
+
+        return rxGetService(StorageService.name(), StorageService.class)
+                .flatMap(service -> service.rxGetCollections()
+                        .doOnEach(notifications -> release(service)));
+    }
+
+    /**
+     * Helper method for retrieving a service from service discovery, wrapped in a Single so that it can be easily
+     * utilised in an rx chain.
+     * @param recordName The name of the record to filter available services by.
+     * @param clazz The client class of the expected service.
+     * @param <T> The type of the client class. This can be alternated between the rxjava or non-rx service class.
+     * @return Single that emits the located service based on the recordName, if any.
+     */
+    private <T> Single<T> rxGetService(String recordName, Class<T> clazz) {
+
+        return Single.create(new SingleOnSubscribeAdapter<T>(fut ->
+                EventBusService.getServiceProxy(serviceDiscovery, record -> record.getName().equals(recordName), clazz, fut)
+        ));
+    }
+
+    /**
+     * Releases the provided service object from ServiceDiscovery.
+     * @param service The service object to be released.
+     */
+    private void release(Object service) {
+        ServiceDiscovery.releaseServiceObject(serviceDiscovery, service);
     }
 }
