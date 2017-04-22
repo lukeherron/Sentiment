@@ -28,6 +28,14 @@ public interface StorageService {
         return ProxyHelper.createProxy(StorageService.class, vertx, address);
     }
 
+    static String name() {
+        return NAME;
+    }
+
+    static String address() {
+        return ADDRESS;
+    }
+
     /**
      * Create a mongo collection using the specified collection name.
      *
