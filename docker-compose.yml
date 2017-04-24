@@ -4,9 +4,6 @@ services:
   mongo:
     image: mongo
 
-  redis:
-    image: redis
-
   api-gateway:
     image: java:alpine
     volumes:
@@ -59,7 +56,6 @@ services:
       - ./sentiment-service/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
     depends_on:
-      - redis
       - storage
       - news-crawler
       - news-linker
@@ -78,3 +74,28 @@ services:
       - mongo
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
+
+  elasticsearch:
+    image: elasticsearch
+    command: elasticsearch -Enetwork.host=0.0.0.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+          ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+
+  logstash:
+    image: logstash
+    command: -e 'input { gelf { host => "0.0.0.0" port => 12201 } }
+              output { elasticsearch { hosts => ["elasticsearch"] } }'
+    ports:
+      - "12201:12201/udp"
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
