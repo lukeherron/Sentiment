@@ -42,7 +42,7 @@ configure (subprojects) { project ->
         compile ("io.vertx:vertx-service-discovery:${vertxVersion}")
         compile ("io.vertx:vertx-service-proxy:${vertxVersion}")
         //compile ("io.vertx:vertx-service-proxy:${vertxVersion}:processor")
-        compile ("biz.paluch.logging:logstash-gelf:1.10.0")
+        compile ("biz.paluch.logging:logstash-gelf:1.11.1")
 
         compileOnly ("io.vertx:vertx-codegen:${vertxVersion}")
 

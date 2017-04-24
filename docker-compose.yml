@@ -4,9 +4,6 @@ services:
   mongo:
     image: mongo
 
-  redis:
-    image: redis
-
   api-gateway:
     image: java:alpine
     volumes:
@@ -15,6 +12,7 @@ services:
       - ./api-gateway/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
     depends_on:
+      - logstash
       - sentiment-service
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
@@ -28,6 +26,8 @@ services:
       - ./news-crawler/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
       - ./news-crawler/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - logstash
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
 
@@ -38,6 +38,8 @@ services:
       - ./news-linker/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
       - ./news-linker/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - logstash
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
 
@@ -48,6 +50,8 @@ services:
       - ./news-analyser/build/resources/main/vertx-default-jul-logging.properties:/var/logging.properties:Z
       - ./news-analyser/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
+    depends_on:
+      - logstash
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
 
@@ -59,7 +63,6 @@ services:
       - ./sentiment-service/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
     depends_on:
-      - redis
       - storage
       - news-crawler
       - news-linker
@@ -75,6 +78,47 @@ services:
       - ./storage/build/resources/main/vertx-config.json:/var/vertx-config.json:Z
     command: java -jar /var/app.jar -conf /var/vertx-config.json -ha
     depends_on:
+      - logstash
       - mongo
     environment:
       - VERTX_JUL_CONFIG=/var/logging.properties
+
+  elasticsearch:
+    image: elasticsearch
+    command: elasticsearch -Enetwork.host=0.0.0.0
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+          ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+#    networks:
+#      - elk
+
+  logstash:
+    image: logstash
+    command: -e 'input { gelf { host => "0.0.0.0" port => 12201 } }
+              output { elasticsearch { hosts => ["elasticsearch"] } }'
+    ports:
+      - "12201:12201/udp"
+#    networks:
+#      - elk
+#      - sentiment
+    depends_on:
+      - elasticsearch
+
+  kibana:
+    image: kibana
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+#    networks:
+#      - elk
+    depends_on:
+      - elasticsearch
+
+#networks:
+#  sentiment:
+#    driver: bridge
+#  elk:
+#    driver: bridge
