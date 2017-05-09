@@ -4,7 +4,7 @@ Sentiment is a news sentiment analyser that aims to track the shifting sentiment
 ## Getting Started
 ### Configuration
 Each module requires configuration before launching. N.B. Application will not function without configuration.
-Configuration files must be located in the `resources` folder of each module.
+Configuration files must be located in the `resources` folder of each module with the name `vertx-config.json`.
 
 #### News Crawler / News Analyser / News Linker
 These three modules require a JSON configuration which resembles the following:
